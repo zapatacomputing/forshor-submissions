@@ -1,0 +1,2501 @@
+{
+ "schema": "forshor.policy-verification/v1",
+ "digest": "42e4062b60db21ebe7b47d593d761798f2b988cf09857781dc83c27297788fa0",
+ "mode": "PhaseTripleProduct",
+ "board": "ptp",
+ "policy": {
+  "name": "forshor-printed-ptp",
+  "mode": "PhaseTripleProduct",
+  "bands": [
+   {
+    "threshold": 2048,
+    "mode": "PhaseTripleProduct",
+    "k": 6,
+    "point_order": [
+     "0",
+     "inf",
+     "1/4",
+     "-1/4",
+     "1",
+     "-1",
+     "1/2",
+     "-1/2",
+     "1/8",
+     "-1/8",
+     "2",
+     "-2",
+     "4",
+     "-4",
+     "8",
+     "-8"
+    ],
+    "operations": [
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      5
+     ],
+     [
+      "shiftL",
+      2,
+      4
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      1,
+      8
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      3,
+      4
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      1,
+      8
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      1,
+      2
+     ],
+     [
+      "phaseProduct",
+      3
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      -1,
+      3
+     ],
+     [
+      "phaseProduct",
+      3
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      1,
+      2
+     ],
+     [
+      "addScaled",
+      4,
+      0,
+      -1,
+      4
+     ],
+     [
+      "addScaled",
+      5,
+      1,
+      -1,
+      4
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      1,
+      4
+     ],
+     [
+      "shiftR",
+      2,
+      4
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      1,
+      4
+     ],
+     [
+      "shiftR",
+      3,
+      4
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      1,
+      0
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      -1,
+      1
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      2,
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      -1,
+      5
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      -1,
+      2
+     ],
+     [
+      "shiftL",
+      3,
+      2
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      -1,
+      5
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      1,
+      1
+     ],
+     [
+      "phaseProduct",
+      3
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      -1,
+      2
+     ],
+     [
+      "phaseProduct",
+      3
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      1,
+      1
+     ],
+     [
+      "shiftL",
+      2,
+      4
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      1,
+      4
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      -1,
+      9
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      1,
+      12
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      -1,
+      4
+     ],
+     [
+      "shiftL",
+      3,
+      4
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      1,
+      4
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      -1,
+      9
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      1,
+      12
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      -1,
+      4
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      1,
+      3
+     ],
+     [
+      "phaseProduct",
+      3
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      -1,
+      4
+     ],
+     [
+      "phaseProduct",
+      3
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      1,
+      3
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      1,
+      8
+     ],
+     [
+      "shiftR",
+      2,
+      4
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      1,
+      8
+     ],
+     [
+      "shiftR",
+      3,
+      4
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      1,
+      1
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      -1,
+      2
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      4,
+      0,
+      1,
+      4
+     ],
+     [
+      "addScaled",
+      5,
+      1,
+      1,
+      4
+     ],
+     [
+      "shiftL",
+      2,
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      -1,
+      6
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      1,
+      8
+     ],
+     [
+      "shiftL",
+      3,
+      2
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      -1,
+      6
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      1,
+      8
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      1,
+      2
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      -1,
+      3
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      1,
+      2
+     ],
+     [
+      "shiftL",
+      2,
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      -1,
+      10
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      1,
+      12
+     ],
+     [
+      "shiftL",
+      3,
+      2
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      -1,
+      10
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      1,
+      12
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      1,
+      3
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      -1,
+      4
+     ],
+     [
+      "phaseProduct",
+      2
+     ],
+     [
+      "addScaled",
+      2,
+      3,
+      1,
+      3
+     ],
+     [
+      "addScaled",
+      2,
+      0,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      2,
+      4,
+      -1,
+      12
+     ],
+     [
+      "shiftR",
+      2,
+      6
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      5,
+      -1,
+      12
+     ],
+     [
+      "shiftR",
+      3,
+      6
+     ]
+    ]
+   },
+   {
+    "threshold": 359,
+    "mode": "PhaseTripleProduct",
+    "k": 4,
+    "point_order": [
+     "0",
+     "inf",
+     "1/4",
+     "-1/4",
+     "-1/2",
+     "1/2",
+     "-1",
+     "1",
+     "2",
+     "-2"
+    ],
+    "operations": [
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "phaseProduct",
+      3
+     ],
+     [
+      "shiftL",
+      0,
+      4
+     ],
+     [
+      "addScaled",
+      0,
+      2,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      1,
+      4
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      2
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      -1,
+      3
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      -1,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      2,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      0,
+      4
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      3
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      2,
+      1,
+      2
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      1,
+      4
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      1,
+      2
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      1,
+      0
+     ],
+     [
+      "shiftL",
+      0,
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      3,
+      -1,
+      0
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      3,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      0,
+      1
+     ],
+     [
+      "addScaled",
+      3,
+      2,
+      1,
+      1
+     ],
+     [
+      "phaseProduct",
+      3
+     ],
+     [
+      "addScaled",
+      3,
+      1,
+      -1,
+      0
+     ],
+     [
+      "shiftL",
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      1,
+      2,
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      1,
+      3
+     ],
+     [
+      "phaseProduct",
+      1
+     ],
+     [
+      "shiftL",
+      0,
+      1
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      -1,
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      2,
+      1,
+      3
+     ],
+     [
+      "phaseProduct",
+      0
+     ],
+     [
+      "addScaled",
+      0,
+      1,
+      1,
+      0
+     ],
+     [
+      "shiftR",
+      0,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      0,
+      -1,
+      0
+     ],
+     [
+      "shiftR",
+      1,
+      1
+     ],
+     [
+      "addScaled",
+      1,
+      3,
+      -1,
+      2
+     ],
+     [
+      "addScaled",
+      0,
+      2,
+      -1,
+      2
+     ]
+    ]
+   }
+  ]
+ },
+ "printed": {
+  "schema": "forshor.ptp-policy-submission/v1",
+  "negation": "oneQubit",
+  "checks": {
+   "threshold_rule": "kernel-checked at build time (PTPPolicySubmission.chain_exact): the exact-width threshold rule from 2048",
+   "not_proved": "the T count and the qubit count are counted by the boards' engine and are not proved in Lean (the correctness, the threshold rule and the peak bound are theorems at this policy)",
+   "check": "kernel-checked at build time (PTPPolicySubmission.check): thresholds strictly decrease and every table passes the PTP contract",
+   "axioms": "propext, Classical.choice, Quot.sound only (#assert_axioms)"
+  },
+  "benchmark": {
+   "bits": 2048
+  },
+  "bands": [
+   {
+    "threshold": 2048,
+    "points": [
+     {
+      "z": 0,
+      "kind": "int"
+     },
+     {
+      "m": 0,
+      "kind": "frac"
+     },
+     {
+      "m": 4,
+      "kind": "frac"
+     },
+     {
+      "m": -4,
+      "kind": "frac"
+     },
+     {
+      "z": 1,
+      "kind": "int"
+     },
+     {
+      "z": -1,
+      "kind": "int"
+     },
+     {
+      "m": 2,
+      "kind": "frac"
+     },
+     {
+      "m": -2,
+      "kind": "frac"
+     },
+     {
+      "m": 8,
+      "kind": "frac"
+     },
+     {
+      "m": -8,
+      "kind": "frac"
+     },
+     {
+      "z": 2,
+      "kind": "int"
+     },
+     {
+      "z": -2,
+      "kind": "int"
+     },
+     {
+      "z": 4,
+      "kind": "int"
+     },
+     {
+      "z": -4,
+      "kind": "int"
+     },
+     {
+      "z": 8,
+      "kind": "int"
+     },
+     {
+      "z": -8,
+      "kind": "int"
+     }
+    ],
+    "ops": [
+     {
+      "op": "phaseProduct",
+      "i": 0
+     },
+     {
+      "op": "phaseProduct",
+      "i": 5
+     },
+     {
+      "op": "shiftL",
+      "n": 4,
+      "i": 2
+     },
+     {
+      "src": 0,
+      "shift": 8,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "shiftL",
+      "n": 4,
+      "i": 3
+     },
+     {
+      "src": 1,
+      "shift": 8,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 2,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "op": "phaseProduct",
+      "i": 3
+     },
+     {
+      "src": 2,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "op": "phaseProduct",
+      "i": 3
+     },
+     {
+      "src": 2,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 0,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 4
+     },
+     {
+      "src": 1,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 5
+     },
+     {
+      "src": 4,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "shiftR",
+      "n": 4,
+      "i": 2
+     },
+     {
+      "src": 5,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "op": "shiftR",
+      "n": 4,
+      "i": 3
+     },
+     {
+      "src": 3,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "phaseProduct",
+      "i": 2
+     },
+     {
+      "src": 3,
+      "shift": 1,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "op": "phaseProduct",
+      "i": 2
+     },
+     {
+      "src": 3,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "shiftL",
+      "n": 2,
+      "i": 2
+     },
+     {
+      "src": 0,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 0,
+      "shift": 5,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "op": "shiftL",
+      "n": 2,
+      "i": 3
+     },
+     {
+      "src": 1,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 1,
+      "shift": 5,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 2,
+      "shift": 1,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "op": "phaseProduct",
+      "i": 3
+     },
+     {
+      "src": 2,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "op": "phaseProduct",
+      "i": 3
+     },
+     {
+      "src": 2,
+      "shift": 1,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "op": "shiftL",
+      "n": 4,
+      "i": 2
+     },
+     {
+      "src": 0,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 0,
+      "shift": 9,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 0,
+      "shift": 12,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "op": "shiftL",
+      "n": 4,
+      "i": 3
+     },
+     {
+      "src": 1,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 1,
+      "shift": 9,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 1,
+      "shift": 12,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 2,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "op": "phaseProduct",
+      "i": 3
+     },
+     {
+      "src": 2,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "op": "phaseProduct",
+      "i": 3
+     },
+     {
+      "src": 2,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 4,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 8,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "shiftR",
+      "n": 4,
+      "i": 2
+     },
+     {
+      "src": 5,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 8,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "op": "shiftR",
+      "n": 4,
+      "i": 3
+     },
+     {
+      "src": 3,
+      "shift": 1,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "phaseProduct",
+      "i": 2
+     },
+     {
+      "src": 3,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "op": "phaseProduct",
+      "i": 2
+     },
+     {
+      "src": 3,
+      "shift": 1,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 0,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 4
+     },
+     {
+      "src": 1,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 5
+     },
+     {
+      "op": "shiftL",
+      "n": 2,
+      "i": 2
+     },
+     {
+      "src": 0,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 0,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 6,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 8,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "shiftL",
+      "n": 2,
+      "i": 3
+     },
+     {
+      "src": 1,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 1,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 6,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 8,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 3,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "phaseProduct",
+      "i": 2
+     },
+     {
+      "src": 3,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "op": "phaseProduct",
+      "i": 2
+     },
+     {
+      "src": 3,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "shiftL",
+      "n": 2,
+      "i": 2
+     },
+     {
+      "src": 0,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 0,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 10,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 12,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "shiftL",
+      "n": 2,
+      "i": 3
+     },
+     {
+      "src": 1,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 1,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 10,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 12,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "src": 3,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "op": "phaseProduct",
+      "i": 2
+     },
+     {
+      "src": 3,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "op": "phaseProduct",
+      "i": 2
+     },
+     {
+      "src": 3,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 2
+     },
+     {
+      "src": 0,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "src": 4,
+      "shift": 12,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 2
+     },
+     {
+      "op": "shiftR",
+      "n": 6,
+      "i": 2
+     },
+     {
+      "src": 1,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 5,
+      "shift": 12,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "op": "shiftR",
+      "n": 6,
+      "i": 3
+     }
+    ],
+    "k": 6,
+    "index": 0
+   },
+   {
+    "threshold": 359,
+    "points": [
+     {
+      "z": 0,
+      "kind": "int"
+     },
+     {
+      "m": 0,
+      "kind": "frac"
+     },
+     {
+      "m": 4,
+      "kind": "frac"
+     },
+     {
+      "m": -4,
+      "kind": "frac"
+     },
+     {
+      "m": -2,
+      "kind": "frac"
+     },
+     {
+      "m": 2,
+      "kind": "frac"
+     },
+     {
+      "z": -1,
+      "kind": "int"
+     },
+     {
+      "z": 1,
+      "kind": "int"
+     },
+     {
+      "z": 2,
+      "kind": "int"
+     },
+     {
+      "z": -2,
+      "kind": "int"
+     }
+    ],
+    "ops": [
+     {
+      "op": "phaseProduct",
+      "i": 0
+     },
+     {
+      "op": "phaseProduct",
+      "i": 3
+     },
+     {
+      "op": "shiftL",
+      "n": 4,
+      "i": 0
+     },
+     {
+      "src": 2,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 0
+     },
+     {
+      "op": "shiftL",
+      "n": 4,
+      "i": 1
+     },
+     {
+      "src": 3,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "src": 0,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "op": "phaseProduct",
+      "i": 1
+     },
+     {
+      "src": 0,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 1
+     },
+     {
+      "op": "phaseProduct",
+      "i": 1
+     },
+     {
+      "src": 3,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "op": "shiftR",
+      "n": 1,
+      "i": 1
+     },
+     {
+      "src": 2,
+      "shift": 1,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "src": 3,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "op": "shiftR",
+      "n": 1,
+      "i": 1
+     },
+     {
+      "src": 2,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 0
+     },
+     {
+      "op": "shiftR",
+      "n": 4,
+      "i": 0
+     },
+     {
+      "src": 0,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "op": "phaseProduct",
+      "i": 1
+     },
+     {
+      "src": 2,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "src": 0,
+      "shift": 4,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "op": "phaseProduct",
+      "i": 1
+     },
+     {
+      "src": 3,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 1
+     },
+     {
+      "op": "shiftR",
+      "n": 2,
+      "i": 1
+     },
+     {
+      "src": 0,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 1
+     },
+     {
+      "src": 1,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "op": "shiftL",
+      "n": 1,
+      "i": 0
+     },
+     {
+      "src": 3,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 0
+     },
+     {
+      "op": "phaseProduct",
+      "i": 0
+     },
+     {
+      "src": 3,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 0
+     },
+     {
+      "op": "shiftR",
+      "n": 1,
+      "i": 0
+     },
+     {
+      "src": 2,
+      "shift": 1,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 3
+     },
+     {
+      "op": "phaseProduct",
+      "i": 3
+     },
+     {
+      "src": 1,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 3
+     },
+     {
+      "op": "shiftL",
+      "n": 1,
+      "i": 1
+     },
+     {
+      "src": 0,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 1
+     },
+     {
+      "src": 2,
+      "shift": 1,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "src": 3,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 1
+     },
+     {
+      "op": "phaseProduct",
+      "i": 1
+     },
+     {
+      "op": "shiftL",
+      "n": 1,
+      "i": 0
+     },
+     {
+      "src": 1,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 0
+     },
+     {
+      "src": 2,
+      "shift": 3,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 0
+     },
+     {
+      "op": "phaseProduct",
+      "i": 0
+     },
+     {
+      "src": 1,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": false,
+      "dst": 0
+     },
+     {
+      "op": "shiftR",
+      "n": 1,
+      "i": 0
+     },
+     {
+      "src": 0,
+      "shift": 0,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 1
+     },
+     {
+      "op": "shiftR",
+      "n": 1,
+      "i": 1
+     },
+     {
+      "src": 3,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 1
+     },
+     {
+      "src": 2,
+      "shift": 2,
+      "op": "addScaled",
+      "negSrc": true,
+      "dst": 0
+     }
+    ],
+    "k": 4,
+    "index": 1
+   }
+  ]
+ },
+ "envelope": {
+  "schema": "forshor.mirror-evidence/v1",
+  "policyDigest": "42e4062b60db21ebe7b47d593d761798f2b988cf09857781dc83c27297788fa0",
+  "policyFile": {
+   "name": "42e4062b60db21eb.policy.json",
+   "sha256": "09e491ab8dc60d387261e1fcdca9baf7a10ad7280d3dc47d9b49d13b90944fba"
+  },
+  "harness": "check_ptp_policy",
+  "record": {
+   "tool": "check_ptp_policy",
+   "policy": "/home/runner/work/forshor-submissions/forshor-submissions/submission/artifacts/work/evidence/42e4062b60db21eb.policy.json",
+   "started": "2026-11-21T21:54:01.266474+00:00",
+   "policy_sha256": "09e491ab8dc60d387261e1fcdca9baf7a10ad7280d3dc47d9b49d13b90944fba",
+   "target_width": 2048,
+   "widths": "exact",
+   "seconds": {
+    "data": 3.05,
+    "report": 0,
+    "cert": 27.19,
+    "replay:PTPSubmitted": 7.08,
+    "replay:PTPSubmittedCert": 17.13
+   },
+   "replay": [
+    {
+     "module": "TableGeneration.RecursiveCost.PTPCheck.PTPSubmitted",
+     "verdict": "replayed",
+     "decls": 13,
+     "theorems": 10,
+     "axiom_union": [],
+     "sorry": false,
+     "peak_gb": 9.1,
+     "seconds": 7,
+     "memory": {
+      "cmd": [
+       "lake",
+       "env",
+       "lean",
+       "--run",
+       "scripts/trusted/ReplayPrefix.lean",
+       "--",
+       "10fd98f73a3f9d58",
+       "TableGeneration.RecursiveCost.PTPCheck.PTPSubmitted",
+       "TableGeneration.RecursiveCost.PTPCheck.PTPSubmitted"
+      ],
+      "exit": 0,
+      "outcome": "finished",
+      "peak_gb": 9.1,
+      "seconds": 7,
+      "cap_gb": 12,
+      "platform": "linux",
+      "architecture": "x86_64",
+      "memory_metric": "sum(VmRSS + VmSwap)",
+      "memory_unit": "GiB",
+      "peak_process_count": 2,
+      "host_memory_gb": 15.33
+     }
+    },
+    {
+     "module": "TableGeneration.RecursiveCost.PTPCheck.PTPSubmittedCert",
+     "verdict": "replayed",
+     "decls": 24,
+     "theorems": 23,
+     "axiom_union": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "sorry": false,
+     "peak_gb": 9.89,
+     "seconds": 17.1,
+     "memory": {
+      "cmd": [
+       "lake",
+       "env",
+       "lean",
+       "--run",
+       "scripts/trusted/ReplayPrefix.lean",
+       "--",
+       "91dab04626012398",
+       "TableGeneration.RecursiveCost.PTPCheck.PTPSubmittedCert",
+       "TableGeneration.RecursiveCost.PTPCheck.PTPSubmittedCert"
+      ],
+      "exit": 0,
+      "outcome": "finished",
+      "peak_gb": 9.89,
+      "seconds": 17.1,
+      "cap_gb": 12,
+      "platform": "linux",
+      "architecture": "x86_64",
+      "memory_metric": "sum(VmRSS + VmSwap)",
+      "memory_unit": "GiB",
+      "peak_process_count": 2,
+      "host_memory_gb": 15.33
+     }
+    }
+   ],
+   "verdict": "accepted",
+   "name": "forshor-printed-ptp",
+   "mode": "PhaseTripleProduct",
+   "bands": [
+    {
+     "threshold": 2048,
+     "k": 6
+    },
+    {
+     "threshold": 359,
+     "k": 4
+    }
+   ],
+   "fast": "report stage skipped (--fast): the ladders are computed in Python (an untrusted oracle) and the certificate's `ladder_exact`, `chain_contracts_exact`, `chain_contracts_tight` and `accepted` are re-proved by the kernel, so a wrong ladder or a failed rule makes the certificate not build; census and formula numbers were not evaluated",
+   "report": {
+    "fast": true,
+    "target_width": 2048,
+    "check": null,
+    "chain_contracts": null,
+    "chain_contracts_tight": null,
+    "threshold_failure": null,
+    "ladder": [
+     {
+      "width": 2048,
+      "k": 6
+     },
+     {
+      "width": 402,
+      "k": 4
+     },
+     {
+      "width": 123,
+      "k": null
+     }
+    ],
+    "ladder_exact": [
+     {
+      "width": 2048,
+      "k": 6
+     },
+     {
+      "width": 359,
+      "k": 4
+     },
+     {
+      "width": 97,
+      "k": null
+     }
+    ],
+    "bands": [
+     {
+      "contract": null,
+      "exact_width_at_threshold": 359,
+      "ptp_child_width_at_threshold": 402
+     },
+     {
+      "contract": null,
+      "exact_width_at_threshold": 97,
+      "ptp_child_width_at_threshold": 112
+     }
+    ]
+   },
+   "report_tiers": {
+    "ladder, child widths, check": "evaluation tier; check and chain re-proved by the kernel in `cert`",
+    "census": "PROVED at every depth (cert `gate_recursion`, Lean ptp_gate_full): rz/toffoli/x/h of the gate-level recursion = ptpResources (sandwich leaf, 1 Rz per cell); census.cnot EXCLUDES the split's sign-extension fan-out \u2014 the circuit's CNOT is `cnot_with_extension` (ptpCnotFull); `toffoli_uncompute` = And\u2020 (ptpAndDag), compute Toffoli (And) = toffoli - toffoli_uncompute",
+    "reserve_need_per_operand, clean_ancilla_peak, qubits": "FORMULA (ForShor reserveNeed shape, private workspace per child). `qubits` (= ptpQubits) is proved only as a bound on the qubits the circuit NAMES (`LowGate.usedQubits`, `ptp_qubits_le_ptpQubits`); it is not a bound on the framework's qubitCount (named qubits + the model's clean scratch), for which see `ptp_peak_qubits` below. The constructed circuit of `gate_recursion` has a different, proved bound on the named qubits: <= 3n + ptpWorkspace (per level 3k\u00b7C' reserve, children share one pool, 2 leaf ancillas). `clean_ancilla_peak` is this suite's formula under its own cost convention; the method-aware scratch bound (ForShor `ptpCleanAnc`, `ptpCleanAncD`) is proved inside `ptp_peak_qubits`",
+    "census_ccphase_leaf, qubits_ccphase_leaf": "FORMULA, documented alternative: the same with the CCPhase leaf (5 Rz per cell; ptpNodeCCPhase_resources, ptpResourcesCCPhase_depth_one)",
+    "ladder_pp_scan": "comparison only (PP's nextSignedWidth), not used",
+    "census_exact, cnot_with_extension_exact, toffoli_uncompute_exact, workspace_exact, qubits_bound_exact": "FORMULA PROVED at every depth on the EXACT ladder (cert `gate_recursion_exact`, Lean ptp_gate_full_exact, --widths exact only): the gate-level recursion with every node's children at ptpTightWidth exists, is correct, and has rz/toffoli/x/h = ptpResourcesX, CNOT = ptpCnotFullX (extension fan-out included; census_exact.cnot excludes it), And\u2020 = ptpAndDagX, qubits <= 3n + ptpWorkspaceX; the NUMBERS at the target width are compiled evaluation (lean --run) of those formulas, not kernel-reduced; ptpResourcesD recurses exactly as ladderX (choose, ptpTightWidth < n), agreement by construction, not a theorem (HG7 F1/F2)",
+    "qubits_bound_scan": "PROVED bound for the scan-ladder circuit of `gate_recursion` (3n + ptpWorkspace), on the named qubits only (no clean scratch)",
+    "ptp_peak_qubits": "Lean-proved UPPER BOUND on the framework's qubitCount (named qubits + clean scratch), `ptpPeakQubits = 3n + ptpWsTD + ptpCleanAncD`: ForShor `ptp_peak_qubits` (any width rule), `ptp_peak_qubits_exact` (exact rule, the board's) and `ptp_peak_qubits_scan` (scan rule), Implementation/PhaseTripleProduct/Statement.lean (PTPPeakQubits*) at ForShor 21e129aeefc0fd1bbb8fa63402f5799af2490788. EXISTENTIAL, like PTPQubitsTight: some circuit following the policy has qubitCount <= the number; not an equality in general. ptpWsTD is the workspace the construction touches (base 2 + 3(k C' - w) per node), ptpCleanAncD the largest clean scratch of one node under the policy's `negation` (1 for `oneQubit`, C' + 1 for `scratch`). The number is evaluated here in Python (ptp_exact_width.ptp_peak_qubits) and cross-checked against ForShor's kernel-evaluated numerals (scripts/test_ptp_peak_qubits.py); the ForShor claims concern ForShor's own PTPPolicy on the same tables, not this suite's TableGeneration.PTP object. Not kernel-reduced in this suite's certificate."
+   },
+   "python_exact_ladder": [
+    [
+     2048,
+     6
+    ],
+    [
+     359,
+     4
+    ],
+    [
+     97,
+     null
+    ]
+   ],
+   "advisory": {
+    "chain_contracts_scan": null
+   },
+   "ptp_peak_qubits": {
+    "negation": "oneQubit",
+    "tier": "see report_tiers.ptp_peak_qubits",
+    "scan": {
+     "ws": 1364,
+     "clean": 1,
+     "peak": 7509
+    },
+    "exact": {
+     "ws": 407,
+     "clean": 1,
+     "peak": 6552
+    }
+   },
+   "lean_sha256": {
+    "PTPSubmitted.lean": "87e223597e002cb97a4acf1cebc120e04154967bd0b7f93d26d2f813732d0acb",
+    "PTPSubmittedCert.lean": "4b84ed943a7e021e620fae051307cf076d7cb2f860d2e8d711483f14770f29b6"
+   },
+   "audit": {
+    "accepted": {
+     "axioms": [
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "Eq TableGeneration.PTPCheck.PTPSubmitted.policy.check Bool.true"
+    },
+    "correct": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (n : Nat) (\u03c6 : Rat) (x : Fin 3 \u2192 Int), Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.evalPhase n \u03c6 x) (instHMul.hMul (instHMul.hMul (instHMul.hMul \u03c6 (x 0).cast) (x 1).cast) (x 2).cast)"
+    },
+    "correct_wrapped": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (n : Nat) (\u03c6 : Rat) (x : Fin 3 \u2192 Int), (\u2200 (s : Fin 3), Shor.FitsSignedWidth n (x s)) \u2192 Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.evalPhaseW n \u03c6 x) (instHMul.hMul (instHMul.hMul (instHMul.hMul \u03c6 (x 0).cast) (x 1).cast) (x 2).cast)"
+    },
+    "width_sound": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b \u2192 \u2200 (n : Fin 3 \u2192 Nat), (\u2200 (s : Fin 3), instLTNat.lt 0 (n s)) \u2192 \u2200 (x : Fin 3 \u2192 Int), (\u2200 (s : Fin 3), Shor.FitsSignedWidth (n s) (x s)) \u2192 \u2200 (s : Fin 3), And (Shor.PTP.AllFits (Shor.PTP.childWidth3 n b.table.ops) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops) (And (Eq (Shor.PTP.runF id (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).fst (List.map (fun p => Shor.PTP.regVal (expectedRow p) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s))) b.table.pts)) (And (\u2200 (v : Int), List.instMembership.mem (Shor.PTP.runF id (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).fst v \u2192 Shor.FitsSignedWidth (Shor.PTP.childWidth3 n b.table.ops) v) (And (Eq (Shor.PTP.runF (Shor.tcWrapInt (Shor.PTP.childWidth3 n b.table.ops)) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops) (Shor.PTP.runF id (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops)) (Eq (Shor.PTP.runF id (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s)) b.table.ops).snd (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth3 n b.table.k) (x s))))))"
+    },
+    "gate_node": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b \u2192 \u2200 (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (x : Fin 3 \u2192 Int), (\u2200 (s : Fin 3), Shor.FitsSignedWidth n (x s)) \u2192 \u2200 (Lay : Shor.PTP.NodeLayout b.table.k), instLENat.le (Shor.PTP.childWidth n b.table.ops) Lay.width \u2192 \u2200 (\u03c6 : Shor.Angle) (ta ua : Nat), Shor.PTP.NodeAnc Lay ta ua \u2192 \u2200 (bas : qs.Basis), Shor.PTP.AncClean ta ua bas \u2192 (\u2200 (s : Fin 3) (i : Fin b.table.k), Eq (Shor.extToInt (Lay.slot s i) bas) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth n b.table.k) (x s) i)) \u2192 Eq (inst_1.evalL (Shor.PTP.ptpNode b.table Lay n \u03c6 ta ua) (qs.ket bas)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal \u03c6.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (x 0).cast (x 1).cast) (x 2).cast))) (qs.ket bas))"
+    },
+    "gate_recursion": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (X : Fin 3 \u2192 Shor.ExtReg) (base : Nat),\n  Shor.PTP.Good X n base \u2192\n    Exists fun W =>\n      Exists fun G =>\n        And (Shor.PTP.PolicyImpl TableGeneration.PTPCheck.PTPSubmitted.policy X n W G)\n          (And (\u2200 (q : Nat), List.instMembership.mem W q \u2192 And (instLENat.le base q) (instLTNat.lt q (instHAdd.hAdd base (Shor.PTP.ptpWorkspace TableGeneration.PTPCheck.PTPSubmitted.policy n))))\n            (And (\u2200 (\u03c6 : Shor.Angle) (b : qs.Basis), (\u2200 (s : Fin 3), Shor.FitsSignedWidth n (Shor.extToInt (X s) b)) \u2192 (\u2200 (q : Nat), List.instMembership.mem W q \u2192 Eq (inst.bit q b) Bool.false) \u2192 Eq (inst_1.evalL (G \u03c6) (qs.ket b)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal \u03c6.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (Shor.extToInt (X 0) b).cast (Shor.extToInt (X 1) b).cast) (Shor.extToInt (X 2) b).cast))) (qs.ket b)))\n              (\u2200 (\u03c6 : Shor.Angle),\n                have R := Shor.LowGate.resources Shor.shorGateResourceModel (G \u03c6);\n                And (Eq R.rz (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).rz) (And (Eq R.toffoli (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).toffoli) (And (Eq R.x (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).x) (And (Eq R.h (Shor.PTP.ptpResources TableGeneration.PTPCheck.PTPSubmitted.policy n).h) (And (Eq R.cnot (Shor.PTP.ptpCnotFull TableGeneration.PTPCheck.PTPSubmitted.policy n)) (And (Eq (Shor.PTP.adjToffCount (G \u03c6)) (Shor.PTP.ptpAndDag TableGeneration.PTPCheck.PTPSubmitted.policy n)) (instLENat.le (G \u03c6).usedQubits.card (instHAdd.hAdd (instHMul.hMul 3 n) (Shor.PTP.ptpWorkspace TableGeneration.PTPCheck.PTPSubmitted.policy n)))))))))))"
+    },
+    "chain_contracts_exact": {
+     "axioms": [
+      "propext"
+     ],
+     "type": "Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.chainContractsX 2048) Bool.true"
+    },
+    "ladder_exact": {
+     "axioms": [
+      "propext"
+     ],
+     "type": "Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.ladderX 2048) (List.cons { fst := 2048, snd := Option.some 6 } (List.cons { fst := 359, snd := Option.some 4 } (List.cons { fst := 97, snd := Option.none } List.nil)))"
+    },
+    "correct_exact": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (n : Nat) (\u03c6 : Rat) (x : Fin 3 \u2192 Int), (\u2200 (s : Fin 3), Shor.FitsSignedWidth n (x s)) \u2192 Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.evalPhaseTight n \u03c6 x) (instHMul.hMul (instHMul.hMul (instHMul.hMul \u03c6 (x 0).cast) (x 1).cast) (x 2).cast)"
+    },
+    "exact_minimal": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b \u2192 \u2200 (n : Nat), instLTNat.lt 0 n \u2192 Exists fun x => And (Shor.FitsSignedWidth n x) (Exists fun v => And (List.instMembership.mem (Shor.PTP.opTrace b.table n x) v) (Not (Shor.FitsSignedWidth (instHSub.hSub (Shor.PTP.ptpTightWidth b.table n) 1) v)))"
+    },
+    "exact_le_scan": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b \u2192 \u2200 (n : Nat), instLTNat.lt 0 n \u2192 instLENat.le (Shor.PTP.ptpTightWidth b.table n) (Shor.PTP.childWidth n b.table.ops)"
+    },
+    "exact_floor": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b \u2192 \u2200 (n : Nat), Eq (Shor.PTP.exactWidth b.table n) (Shor.PTP.ptpTightWidth b.table n)"
+    },
+    "gate_node_exact": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (b : Shor.PTP.PTPBand), List.instMembership.mem TableGeneration.PTPCheck.PTPSubmitted.policy.bands b \u2192 \u2200 (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (x : Fin 3 \u2192 Int), (\u2200 (s : Fin 3), Shor.FitsSignedWidth n (x s)) \u2192 \u2200 (Lay : Shor.PTP.NodeLayout b.table.k), instLENat.le (Shor.PTP.ptpTightWidth b.table n) Lay.width \u2192 \u2200 (\u03c6 : Shor.Angle) (ta ua : Nat), Shor.PTP.NodeAnc Lay ta ua \u2192 \u2200 (bas : qs.Basis), Shor.PTP.AncClean ta ua bas \u2192 (\u2200 (s : Fin 3) (i : Fin b.table.k), Eq (Shor.extToInt (Lay.slot s i) bas) (Shor.PTP.limbsAt b.table.k (Shor.PTP.limbWidth n b.table.k) (x s) i)) \u2192 Eq (inst_1.evalL (Shor.PTP.ptpNode b.table Lay n \u03c6 ta ua) (qs.ket bas)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal \u03c6.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (x 0).cast (x 1).cast) (x 2).cast))) (qs.ket bas))"
+    },
+    "gate_recursion_exact": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (n : Nat) (X : Fin 3 \u2192 Shor.ExtReg) (base : Nat),\n  Shor.PTP.Good X n base \u2192\n    Exists fun W =>\n      Exists fun G =>\n        And (Shor.PTP.PolicyImplX TableGeneration.PTPCheck.PTPSubmitted.policy X n W G)\n          (And (\u2200 (q : Nat), List.instMembership.mem W q \u2192 And (instLENat.le base q) (instLTNat.lt q (instHAdd.hAdd base (Shor.PTP.ptpWorkspaceX TableGeneration.PTPCheck.PTPSubmitted.policy n))))\n            (And (\u2200 (\u03c6 : Shor.Angle) (b : qs.Basis), (\u2200 (s : Fin 3), Shor.FitsSignedWidth n (Shor.extToInt (X s) b)) \u2192 (\u2200 (q : Nat), List.instMembership.mem W q \u2192 Eq (inst.bit q b) Bool.false) \u2192 Eq (inst_1.evalL (G \u03c6) (qs.ket b)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal \u03c6.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (Shor.extToInt (X 0) b).cast (Shor.extToInt (X 1) b).cast) (Shor.extToInt (X 2) b).cast))) (qs.ket b)))\n              (\u2200 (\u03c6 : Shor.Angle),\n                have R := Shor.LowGate.resources Shor.shorGateResourceModel (G \u03c6);\n                And (Eq R.rz (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy n).rz) (And (Eq R.toffoli (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy n).toffoli) (And (Eq R.x (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy n).x) (And (Eq R.h (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy n).h) (And (Eq R.cnot (Shor.PTP.ptpCnotFullX TableGeneration.PTPCheck.PTPSubmitted.policy n)) (And (Eq (Shor.PTP.adjToffCount (G \u03c6)) (Shor.PTP.ptpAndDagX TableGeneration.PTPCheck.PTPSubmitted.policy n)) (instLENat.le (G \u03c6).usedQubits.card (instHAdd.hAdd (instHMul.hMul 3 n) (Shor.PTP.ptpWorkspaceX TableGeneration.PTPCheck.PTPSubmitted.policy n)))))))))))"
+    },
+    "chain_contracts_tight": {
+     "axioms": [
+      "propext"
+     ],
+     "type": "Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.chainContractsTight 2048) Bool.true"
+    },
+    "thresholds_at_target": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (m : Nat) (T : Shor.PTP.PTPTable), TableGeneration.PTPCheck.PTPSubmitted.policy.ExactReach 2048 m \u2192 Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.choose m) (Option.some T) \u2192 And (instLENat.le T.k m) (instLTNat.lt (Shor.PTP.ptpTightWidth T m) m)"
+    },
+    "correct_at_target": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (\u03c6 : Rat) (x : Fin 3 \u2192 Int), (\u2200 (s : Fin 3), Shor.FitsSignedWidth 2048 (x s)) \u2192 Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.evalPhaseTight 2048 \u03c6 x) (instHMul.hMul (instHMul.hMul (instHMul.hMul \u03c6 (x 0).cast) (x 1).cast) (x 2).cast)"
+    },
+    "exact_ladder_at_target": {
+     "axioms": [
+      "propext"
+     ],
+     "type": "And (Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.ladderX 2048) TableGeneration.PTPCheck.PTPSubmittedCert.exactLadder) (Eq (TableGeneration.PTPCheck.PTPSubmitted.policy.chainContractsTight 2048) Bool.true)"
+    },
+    "gate_recursion_exact_at_target": {
+     "axioms": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+     ],
+     "type": "\u2200 (qs : Shor.QSemantics) [inst : Shor.RegEncoding qs.Basis] [inst_1 : Shor.LowerGateClass qs] (X : Fin 3 \u2192 Shor.ExtReg) (base : Nat),\n  Shor.PTP.Good X 2048 base \u2192\n    Exists fun W =>\n      Exists fun G =>\n        And (Shor.PTP.PolicyImplX TableGeneration.PTPCheck.PTPSubmitted.policy X 2048 W G)\n          (And (\u2200 (q : Nat), List.instMembership.mem W q \u2192 And (instLENat.le base q) (instLTNat.lt q (instHAdd.hAdd base (Shor.PTP.ptpWorkspaceX TableGeneration.PTPCheck.PTPSubmitted.policy 2048))))\n            (And (\u2200 (\u03c6 : Shor.Angle) (b : qs.Basis), (\u2200 (s : Fin 3), Shor.FitsSignedWidth 2048 (Shor.extToInt (X s) b)) \u2192 (\u2200 (q : Nat), List.instMembership.mem W q \u2192 Eq (inst.bit q b) Bool.false) \u2192 Eq (inst_1.evalL (G \u03c6) (qs.ket b)) (instHSMul.hSMul (Complex.exp (instHMul.hMul (instHMul.hMul (Complex.ofReal \u03c6.toReal) Complex.I) (instHMul.hMul (instHMul.hMul (Shor.extToInt (X 0) b).cast (Shor.extToInt (X 1) b).cast) (Shor.extToInt (X 2) b).cast))) (qs.ket b)))\n              (\u2200 (\u03c6 : Shor.Angle),\n                have R := Shor.LowGate.resources Shor.shorGateResourceModel (G \u03c6);\n                And (Eq R.rz (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy 2048).rz) (And (Eq R.toffoli (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy 2048).toffoli) (And (Eq R.x (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy 2048).x) (And (Eq R.h (Shor.PTP.ptpResourcesX TableGeneration.PTPCheck.PTPSubmitted.policy 2048).h) (And (Eq R.cnot (Shor.PTP.ptpCnotFullX TableGeneration.PTPCheck.PTPSubmitted.policy 2048)) (And (Eq (Shor.PTP.adjToffCount (G \u03c6)) (Shor.PTP.ptpAndDagX TableGeneration.PTPCheck.PTPSubmitted.policy 2048)) (instLENat.le (G \u03c6).usedQubits.card (instHAdd.hAdd (instHMul.hMul 3 2048) (Shor.PTP.ptpWorkspaceX TableGeneration.PTPCheck.PTPSubmitted.policy 2048)))))))))))"
+    }
+   },
+   "finished": "2026-11-21T21:54:55.775299+00:00"
+  },
+  "tree": {
+   "lean": "leanprover/lean4:v4.36.0-rc1",
+   "forshorPin": "21e129aeefc0fd1bbb8fa63402f5799af2490788",
+   "stoBase": "361e81e"
+  }
+ },
+ "forshor": null,
+ "model": {
+  "id": "sto-site-v3",
+  "dataFingerprint": "176ce4047f5957f1",
+  "engineRevision": "677cc2e05ab178afff8dc632ff56058a8196a116",
+  "qualtran": {
+   "version": "0.8.0.dev0",
+   "source": "vendored"
+  },
+  "forshor": {
+   "pin": "21e129aeefc0fd1bbb8fa63402f5799af2490788"
+  },
+  "sto": {
+   "commit": "361e81e25965506423d169530a7decb5b27973d4"
+  },
+  "lean": "leanprover/lean4:v4.36.0-rc1",
+  "widthRule": "exact",
+  "negation": "incrementer",
+  "n": 2048,
+  "rotation": {
+   "synthesis": "Ross-Selinger measured mean, 3.075*log2(1/eps) + 0.86",
+   "fraction": 0.5
+  }
+ },
+ "login": "Rqcker",
+ "createdAt": "2026-11-21T21:54:55Z",
+ "leanSha256": "beeff3a8da4b61428fbad8753712c75ffb6df40a60da05d69114f548c4bd2211",
+ "ciVerification": {
+  "schema": "forshor-verification/v1",
+  "key": "f3eb2855a2b63e97b172d0d5bf1ff97ab0cb51c68a898bb902d5e39ddafedc01",
+  "headSha": "3ea8d21bdf225a7f457f8a26151a9e43fba02cab",
+  "fingerprint": "89dcd94622e8b01524e077dfdc38503ab1be23f3955d2ef2a980eeaafba9c976",
+  "runId": "44953566874",
+  "runAttempt": 1,
+  "pullRequest": 144
+ }
+}
