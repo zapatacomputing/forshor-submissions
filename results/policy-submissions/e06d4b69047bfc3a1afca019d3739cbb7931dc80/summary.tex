@@ -1,0 +1,80 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\title{Full order finding: a separate table and padding for each band}
+\author{Rqcker}
+\date{}
+\begin{document}
+\maketitle
+
+\section*{Objective}
+Full order-finding board at $n = 2048$, $\delta = 0.01$: minimise $Q \times T$ of one run. The policy is a
+PhaseProduct policy, so it is also listed on the PhaseProduct board; it is not tuned for that board.
+
+\section*{Starting point and credits}
+No new table is introduced. Every table is a published one, used unchanged or after a transformation that
+keeps its number of additions:
+\begin{itemize}
+\item $k=8$, $k=7$, $k=6$, one $k=5$ and one $k=3$ table: as published in \texttt{npdeep\_sub3} (pull request \#140);
+\item two $k=5$ tables: as published in \texttt{npdeep\_sub4} (pull request \#141);
+\item the $k=4$ table and one $k=3$ table: as published in \texttt{gghoryafi\_sub7} (pull request \#133);
+\item the $k=2$ table: as published in \texttt{npdeep\_sub1} (pull request \#107); it is also in the engine's table library.
+\end{itemize}
+Those submissions credit the repository's table library for most of these tables, and the credit belongs to
+their authors. The thresholds of \texttt{npdeep\_sub3}, rank 1 of this board when this policy was built, were the
+starting point of the search. The use of a neutral shift pair to raise an exact width follows the format
+document and earlier submissions (for example \texttt{davidyashgur\_sub1}).
+
+\section*{Construction}
+Earlier policies on this board use one table for each arity $k$. In the full run a table of arity $k$ is applied
+at many operand widths (the $k=4$ table at more than twenty), and its exact child width at each of them follows
+from the same program, so one padding has to suit all of them.
+
+A band of a policy is a threshold together with its own table, and the checks are stated for each band
+separately: the policy check requires decreasing thresholds and a valid table in every band, and ForShor's
+build accepts a record per band. This policy therefore gives bands of the same arity different tables where
+that lowers the price. Three kinds of variant of a published table are used:
+\begin{itemize}
+\item the table itself;
+\item its mirror images: the program with the registers in reverse order (points $x \mapsto 1/x$) and the program
+after $x \mapsto -x$, kept only when every checkpoint row is exactly the row of an admissible point, so that no
+negation is needed. The number of additions is unchanged, but the exact child width can differ because the top
+limb is the signed one;
+\item any of these with one neutral pair \texttt{shiftL 0 s}, \texttt{shiftR 0 s} placed first, which raises the
+exact child width at the band's widths to a chosen value.
+\end{itemize}
+The plan was computed in two independent ways that agree: a bottom-up dynamic programme over operand widths
+(cost of a square product at width $w$ = the cheaper of the leaf and, over all variants, the table's arithmetic
+plus $2k-1$ children at its exact child width, with a rotation priced at the run's own Ross--Selinger cost and
+calls weighted by their multiplicity in the run), and a descent that changes one band at a time and keeps a
+change only when the full-run price falls. Both use the engine's own exact-width and pricing code.
+
+The result has 23 bands and 12 distinct tables (two for $k=8$, two for $k=7$, three for $k=5$, two for $k=3$,
+one each for $k=6$, $k=4$, $k=2$). The starter pack's \texttt{checked\_policies} refuses a policy with two
+tables of one arity, so the Lean file was written by the pack's \texttt{policy\_to\_template.template\_text}
+from the policy object directly.
+
+A second freedom was examined and is not used: the threshold rule inspects only the recursion from
+$n = 2048$, so a width that this recursion does not visit may stop at a leaf through a band that does not
+shrink there. Plans of that kind were admissible but none was cheaper.
+
+\section*{Prices}
+From the repository's pricing engine at commit \texttt{28f69fe} (engine revision \texttt{677cc2e}, epoch
+\texttt{ab1f8887b1b50e56}):
+\begin{itemize}
+\item full order finding: single run $T = 1{,}537{,}941{,}102{,}391$, $Q = 13{,}454$,
+$Q \times T = 2.069146 \times 10^{16}$;
+\item for comparison, \texttt{npdeep\_sub3} on the same engine: $T = 1{,}549{,}077{,}325{,}408$, $Q = 13{,}374$,
+$Q \times T = 2.071736 \times 10^{16}$;
+\item PhaseProduct board: $T = 9{,}805{,}031$, $Q = 4{,}441$; the two engines agree.
+\end{itemize}
+The gain is in $T$ ($-0.72\%$); $Q$ is $80$ higher. Lower-$Q$ plans were priced and scored worse.
+
+\section*{What is not proved}
+$T$ is counted in Python (Qualtran) and is not proved in Lean. $Q$ is the live-qubit peak, a formula over the
+policy's widths, and is not a Lean-proved count for this policy. Before submission the repository's verifier
+(\texttt{scripts/verifier.py}: ForShor's gate and build, and the policy check at exact widths) was run locally
+on this file against a build of the pinned trees and reported success; \texttt{npdeep\_sub3}'s file, run the
+same way as a control, also passed. No claim of optimality is made: the plan is the best found over the
+published tables and the variants above.
+\end{document}
