@@ -11,7 +11,7 @@ from correct policies is the priority". Three things that priority needs, assert
 Every test names the production change that would make it fail. Matching is by anchored,
 class-level patterns on the CAUSE clause, never a substring of drifting wording. The anchor
 sentences are asserted as PREFIXES because other code matches on them.
-Census: ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md.
+The causes they separate are the class-level patterns below, one per cause.
 """
 import re
 import sys

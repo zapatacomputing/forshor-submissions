@@ -732,7 +732,7 @@ def test_a_result_that_reprices_no_board_of_this_policy_is_refused(tmp_path):
 
 
 # --- C20 / C21: two archive checks raised byte-identical messages -------------------------------
-# Census: ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md. Nothing below changes which
+# The two checks are C20 and C21 above. Nothing below changes which
 # submissions are archived or refused; only the reason says which check refused.
 
 def test_a_summary_rule_says_which_copy_of_the_file_it_read(remote):

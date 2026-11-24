@@ -7,8 +7,8 @@ route) — those need different participant actions — so each class gets its o
 
 Every test below names the production change that would make it fail. Matching is by
 anchored, class-level patterns on the *cause* clause, never on incidental wording.
-Census and cause enumeration: ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md
-(collisions C1, C2 for this module).
+The two causes that used to collide here are census collisions C1 and C2, enumerated as the
+module-level patterns below, one per cause, and each test drives the one it names.
 """
 import re
 import sys
@@ -23,7 +23,7 @@ from policy_options import check_coherent_export, check_no_full_run_export  # no
 
 #: The anchors the rest of the repository already matches on; they must survive every rewording.
 #: starter/test_pack_validation.py and export_v2/pytests/test_readout_overlay.py assert these,
-#: and ForShor_Integration/readiness/pre-push/bind_native_split_mirror.py:73 asserts the first.
+#: and they are policy_options.FULL_RUN_ROUTE / COHERENT_ROUTE, so no consumer can drift from them.
 FULL_RUN_ANCHOR = "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
 COHERENT_ANCHOR = "is not supported by the coherent pricing route"
 

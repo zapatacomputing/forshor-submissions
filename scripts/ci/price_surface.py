@@ -31,7 +31,7 @@ written -- never a derivation of the thing it guards, so none of this is circula
      HONEST SCOPE: with `engineRevision` at its present whole-folder pathspec, any COMMITTED change under
      `evaluation/engine` moves `engineRevision` and therefore the epoch, so R1 cannot fire for the engine groups
      today. It is a TRIPWIRE, not a live check: it fires the moment anyone narrows `engineRevision` (that proposal
-     was investigated and rejected -- see readiness/pre-push/PRICE-FINGERPRINT-COVERAGE.md), or moves a
+     was investigated and rejected), or moves a
      price-relevant file out of `evaluation/engine`, or lands a group change on a branch with no engine commit.
      The rules that do fire today are R2 and R3.
 
@@ -160,8 +160,8 @@ GROUPS = (
                "epoch input (`pricing._all_tables`: 'Kept here, outside evaluation/engine, so the fix does not move "
                "engineRevision (and so the epoch)'). They are listed so a reviewer can see when the computation "
                "moved, but they are not enforced: they change for many legitimate reasons, and failing on them "
-               "would make the guard unusable. A change here that moves a PRICE is still unguarded; see the "
-               "'What remains uncovered' section of readiness/pre-push/PRICE-FINGERPRINT-COVERAGE.md.",
+               "would make the guard unusable. A change here that moves a PRICE is still unguarded; R3 in "
+               "this module's docstring states that uncovered surface exactly.",
         "paths": ("evaluation/export_v2/epoch.py", "evaluation/export_v2/canon.py",
                   "evaluation/export_v2/pricing.py", "evaluation/export_v2/mapping.py"),
     },

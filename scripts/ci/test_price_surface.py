@@ -14,7 +14,8 @@ import unittest
 import price_surface as ps
 
 REPO = ps.REPO
-#: Recorded by the audit in readiness/pre-push/PRICE-FINGERPRINT-COVERAGE.md and by this release's verification.
+#: Pinned by this release's verification. test_the_mirrored_dataFingerprint_equals_the_engines and
+#: test_the_mirrored_engine_data_fingerprint_equals_the_engines re-derive these from the engine itself.
 EPOCH_DATA_FINGERPRINT = "176ce4047f5957f1"
 ENGINE_DATA_FINGERPRINT = "a098f72365d01ee5"
 ENGINE_REVISION = "677cc2e05ab178afff8dc632ff56058a8196a116"

@@ -25,9 +25,9 @@ sys.path.insert(0, str(EVAL / "starter" / "pack" / "harness"))
 
 from policy_options import allow_qualified_full_run_export, check_no_full_run_export  # noqa: E402
 
-#: The anchor every consumer matches on, as a PREFIX. starter/test_pack_validation.py,
-#: export_v2/pytests/test_readout_overlay.py and
-#: ForShor_Integration/readiness/pre-push/bind_native_split_mirror.py all match it.
+#: The anchor every consumer matches on, as a PREFIX. starter/test_pack_validation.py and
+#: export_v2/pytests/test_readout_overlay.py both match it, and it is
+#: policy_options.FULL_RUN_ROUTE, so the two cannot drift apart by a byte.
 ANCHOR = "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
 
 WELL_FORMED = {"schema": "forshor.full-run-selection/v1", "profile": "split-step2-fallback-step4-kicks"}

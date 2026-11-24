@@ -5,9 +5,8 @@ Why sampling is allowed here.  The epoch model already costs rotations by a MEAS
 (`epoch.py:97`).  The default synthesis method's price is therefore an empirical summary of measured
 syntheses, not a per-site derivation.  A sampled interval for the B3 fallback is the same epistemic
 standard, applied to a method whose words must be derived rather than read off a fitted mean: parity with
-Ross-Selinger, not a relaxation of it.  Owner's ruling, 2026-11-24, written up in the integration readiness
-note `readiness/pre-push/SAMPLED-FALLBACK-REVERSAL.md`: this reverses the earlier "defer public sampled
-ranking" scope for the fallback costing question only.
+Ross-Selinger, not a relaxation of it.  Owner's ruling, 2026-11-24: this reverses the earlier "defer
+public sampled ranking" scope for the fallback costing question only.
 
 Policy-generality.  Nothing here names a fixture.  The sample is a function of the exactly enumerated
 inventory the policy itself declares (turns, multiplicities, sign-bit counts) and the public contract salt
