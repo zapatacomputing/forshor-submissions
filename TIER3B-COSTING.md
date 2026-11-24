@@ -154,8 +154,17 @@ against the 123.19262356285252 Ross-Selinger mean (61.96% lower per site), with 
 
 Measured with the **pinned interpreter**
 `/Users/joshua/Desktop/Resource_Lab/projects/synthesis_backends/.venv/bin/python` (**Python 3.12.14 /
-numpy 2.5.4**). Digests in this project are environment-sensitive — an off-pin env (3.11.15 / numpy 2.4.6)
-gives `c773f502…` for the full panel — so every number below is from that interpreter and no other.
+numpy 2.5.4**). Digests in this project are environment-sensitive — lane XK established that an off-pin env
+(3.11.15 / numpy 2.4.6) gives `c773f502…` for the full panel — so every number in this document is from that
+interpreter and no other.
+
+**One correction for lane XK, reported rather than resolved.** The only `.pricing-venv` on this machine,
+`/Users/joshua/Desktop/ForShor_Integration/.pricing-venv`, is itself **3.12.14 / numpy 2.5.4** and reproduces
+`998ad142…` exactly. So whatever env produced `c773f502…` is not that one, and the `c773f502` divergence could
+not be reproduced here. XK's *rule* stands and was followed — pin the interpreter for every reported number —
+but the specific env it names should be re-identified before anyone relies on it as the off-pin control.
+`.pricing-venv` does lack `pygridsynth`, as the brief says, so it would still be the wrong environment for the
+research repository's suites.
 
 | Suite | XF baseline | This lane |
 |---|---|---|
@@ -171,7 +180,9 @@ weakened; `test_a_qft_design_and_a_step_2_fallback_cannot_be_asked_for_together`
 and gains the Tier 3b family (see below).
 
 The baseline itself was re-measured in this worktree before any change: **448 passed, 152 skipped**, exactly
-XF's figure.
+XF's figure. `scripts/test_contributor_cli.py` is also unchanged at **54 passed + 22 subtests**. The single
+remaining `--runslow` skip is the environmental one every lane reports (`test_engine_backed.py`:
+`FORSHOR_SITE_DIR not set`), not a slow test and not this lane's.
 
 ### Hard gates, at the final head
 
@@ -199,9 +210,20 @@ It could hardly be otherwise: the three new modules have **no production caller*
 `test_full_run_chain.py` enforces, so nothing on the default path can reach them.
 
 Under AGENTS.md rule 5 the **verification identity moves**, because `evaluation/export_v2/` is an identity
-input and this lane changes it. An already-verified head is re-verified rather than reusing its receipt. The
-Lean-cache inputs are untouched (rule 2), `evaluation/engine/` is byte-identical (rule 1), and no frozen
-record is edited (rule 3).
+input and this lane changes it. An already-verified head is re-verified rather than reusing its receipt:
+
+```
+$ python scripts/ci/verification_identity.py --head 080f4dba92edc10105bbb658b5834555455563a9
+{"schema": "forshor-verification/v1",
+ "key": "c057f9a0640fe890c8dcaa629f61ac4c323efb796e04964bc5445e28558c1328",
+ "headSha": "080f4dba92edc10105bbb658b5834555455563a9",
+ "fingerprint": "ae3cd370a9201d8cbb8dd86be235447ffb30dbe5a5a4814c84f29cd61f736586"}
+```
+
+XF's was `36d74218…`. The Lean-cache inputs are untouched (rule 2) — `git diff 792464f -- TableGeneration
+lakefile.lean lake-manifest.json lean-toolchain evaluation/policy-trees.json` is **empty**, so no cache is
+emptied and no cold build is triggered. `evaluation/engine/` is byte-identical (rule 1) and no frozen record
+is edited (rule 3).
 
 ### Non-vacuity, by perturbation
 
