@@ -66,8 +66,8 @@ HEAD_PANELS = {
     "full-1e-6": "55f99bd4f948a0c2d3f3d2857c4ca7b8a2ef29b14972b46d2c15e2d5341df832",
 }
 
-#: The same, for the LEDGER ROW -- the artifact obstacle 2 changes, and the numbers forshor-site derives ranks
-#: from (`epoch.py:2`). Measured on 792464f with the row arguments `_row` builds below.
+#: The same, for the LEDGER ROW -- the artifact obstacle 2 changes, and the numbers ranks are derived from
+#: downstream (see `epoch.py`). Measured on 792464f with the row arguments `_row` builds below.
 HEAD_ROWS = {
     "pp-1e-2": "8ce88ac2dd805194dc6c1b754105cb018bd3418520cdff3d053981568caf6e45",
     "full-1e-2": "5f4dbd9c3499f72593d578880f052dfcfc42feef6976f21385e9f9e1d44d44e9",
@@ -430,9 +430,10 @@ def test_row_of_ranks_a_full_board_on_the_projection_without_the_engine():
                           pull_request_url=None, submission_id=None, detail="d")["T"] == ENGINE_FULL["T"]
 
 
-#: `rowFields` in forshor-site `src/contracts/results-v2.ts:194-207`, which `rowSchema` spreads into a Zod
-#: `z.strictObject` -- so a row carrying any key not named here is REJECTED by the site, not ignored.
-#: `organizerBaseline` is `.optional()` and is set by the planner, not by `row_of`; `rank` is added by the
+#: The complete set of keys the published row schema accepts. That schema is CLOSED: a row carrying any key not
+#: named here is REJECTED, not ignored. This set is the authority used in this repository -- it is transcribed
+#: here deliberately so the constraint is checkable without reference to the publisher's source.
+#: `organizerBaseline` is optional and is set by the planner, not by `row_of`; `rank` is added by the
 #: publisher after ranking ("A ledger row (no rank)").
 SITE_ROW_FIELDS = {"rowId", "origin", "organizerBaseline", "name", "T", "qubits", "ladder", "ladderLabel",
                    "createdAt", "pullRequestUrl", "submissionId", "trust", "detail"}
@@ -441,27 +442,26 @@ SITE_ROW_FIELDS = {"rowId", "origin", "organizerBaseline", "name", "T", "qubits"
 def test_the_row_names_no_design_and_no_readout_because_the_site_contract_has_no_field_for_either():
     """THE ROW/DESIGN SEAM (lane XD's finding), settled in integration wave 2 by lane XF.
 
-    XD found that `forshor_bot/leaderboard.py:_design` reads a design off the published ROW while `row_of`
-    copies no design key onto it, so the bot can never see a design-bearing row. The proposed fix was to add
-    the design identity to the row, "mirroring how the row already carries what it needs for `readout`".
+    XD found that the leaderboard bot reads a design off the published ROW while `row_of` copies no design key
+    onto it, so the bot can never see a design-bearing row. The proposed fix was to add the design identity to
+    the row, "mirroring how the row already carries what it needs for `readout`".
 
-    IT MUST NOT BE ADDED, and this test is the record of why. Established from the code on both sides:
+    IT MUST NOT BE ADDED, and this test is the record of why. Established from the behaviour on both sides:
 
-      1. `rowSchema` is `z.strictObject({...rowFields, rank})` (results-v2.ts:209-215). A Zod strictObject
-         REJECTS unrecognised keys. `rowFields` (:194-207) names no `design` and no `readout`. So adding
-         either to `row_of` would make EVERY published row fail the contract lane XB pinned -- not just
-         design-bearing ones.
+      1. The published row schema is CLOSED: it rejects unrecognised keys rather than dropping them, and it
+         names no `design` and no `readout`. So adding either to `row_of` would make EVERY published row fail
+         the contract lane XB pinned -- not just design-bearing ones. `SITE_ROW_FIELDS` above is the key set.
       2. There is no key-shaped precedent to mirror. The row carries what it needs for `readout` NOT as a
          key but through `ranked_price_of`, which substitutes the readout's own T and qubits into the row's
-         existing `T` / `qubits` fields. `row_of` has never copied a `readout` key, and the site has no
+         existing `T` / `qubits` fields. `row_of` has never copied a `readout` key, and there is no published
          field for one.
-      3. The bot cannot read it from the panel either: the panel's `fullRun` is itself a strictObject whose
-         only optional price is `readout` (:408-412) and which has NO `qft` key at all. A design-bearing
-         panel is unpublishable for the same reason a design-bearing row would be.
+      3. The bot cannot read it from the panel either: the panel's `fullRun` is closed in the same way, its
+         only optional price is `readout`, and it has NO `qft` key at all. A design-bearing panel is
+         unpublishable for the same reason a design-bearing row would be.
 
     So the absent-key branch of the bot's `_design` (absent means `reference`, which is statable) is always
     the correct answer, because a design-bearing row cannot be published at all -- intake refuses the
-    compiled `submitted_full_run` key outright and the source gate at `intake_v2.py:278-280` stays closed.
+    compiled `submitted_full_run` key outright and `intake_v2.py`'s source gate stays closed.
     `_design` is already fail-closed for anything else: an unrecognised design is kept verbatim and NOT
     stated, rather than read as the default.
 
@@ -473,15 +473,15 @@ def test_the_row_names_no_design_and_no_readout_because_the_site_contract_has_no
     against. The only things preventing it are the intake refusals and the absent site field, so this test
     pins the field set executably instead of leaving it to a comment that has already drifted once.
 
-    Fails if `row_of` grows a `design` or `readout` key -- which would break the site contract -- or any
-    other key the site does not accept."""
+    Fails if `row_of` grows a `design` or `readout` key -- which would break the published contract -- or any
+    other key that contract does not accept."""
     for full in ({**ENGINE_FULL, "qft": {"T": 4.0, "qubits": 11}},
                  {**ENGINE_FULL, "readout": {**ENGINE_FULL, "T": 5.0, "qubits": 12}},
                  dict(ENGINE_FULL)):
         panel = {"rowId": HEAD_SHA, "fullRun": full, "verification": {"stoMirror": None, "forshorPolicy": None}}
         row = mapping.row_of(panel, origin="submission", name="t", created_at="x", pull_request_url=None,
                              submission_id=None, detail="d")
-        assert "design" not in row, "the site's rowSchema is a strictObject with no design field"
+        assert "design" not in row, "the published row schema is closed and has no design field"
         assert "readout" not in row, "nor a readout field; the readout reaches the row as T and qubits"
         assert set(row) <= SITE_ROW_FIELDS, sorted(set(row) - SITE_ROW_FIELDS)
 

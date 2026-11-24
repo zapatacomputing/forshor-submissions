@@ -1,5 +1,5 @@
 """Build an epoch: the model, the planner rows with their evidence, the reference curves and every panel, as one
-`forshor.epoch-input/v2` document. forshor-site derives ranks, boards and the snapshot id from it.
+`forshor.epoch-input/v2` document. Ranks, boards and the snapshot id are derived from it downstream, not here.
 
 Planner rows are the policies the epoch's planner builds from the table history ("STO frontier after <submission>"), at each
 delta, canonicalized as the seed records are (consecutive same-table bands merged; prices unchanged). Many rows share one

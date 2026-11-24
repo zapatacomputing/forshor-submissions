@@ -1,5 +1,6 @@
-"""Canonical JSON and the epoch hash, identical to forshor-site's `canonicalJson` / `epochOf` for the values used here
-(strings, integers, booleans and simple floats such as 0.5; keys sorted; no whitespace)."""
+"""Canonical JSON and the epoch hash. The encoding must agree byte for byte with the publisher's, because the epoch id is a
+hash of it: strings, integers, booleans and simple floats such as 0.5; keys sorted; no whitespace. Any divergence shows up as
+a changed epoch id, which `pytests/test_operational_pin.py` and AGENTS.md rule 1 both pin."""
 from __future__ import annotations
 
 import hashlib

@@ -568,19 +568,18 @@ def test_the_primitive_route_never_reaches_the_archive_whatever_the_archive_admi
 
 
 def test_no_primitive_bearing_entry_can_be_published_under_the_shipped_site_contract():
-    """THE PUBLISHER ANSWER. The site's `rowSchema` is a Zod strictObject: a row may carry no primitive key (lane XF's
-    seam ruling pins `row_of`'s field set), and `checkPanel` requires a non-full board's `row.T` and `row.qubits` to
-    EQUAL its panel's. So a primitive price can reach a row only by moving the panel's own T and qubits -- which is
-    what `standalone_price_of` does.
+    """THE PUBLISHER ANSWER. The published row schema is closed: a row may carry no primitive key (lane XF's seam
+    ruling pins `row_of`'s field set, as `SITE_ROW_FIELDS` in `test_design_price_plumbing.py`), and panel validation
+    requires a non-full board's `row.T` and `row.qubits` to EQUAL its panel's. So a primitive price can reach a row
+    only by moving the panel's own T and qubits -- which is what `standalone_price_of` does.
 
-    THE PANEL HALF IS NOT THE BLOCKING ONE, and the reason recorded here when this lane landed no longer holds. Lane
-    XM's site contract (`prepush/XM-primitive-rendering`, 521bee4, seven minutes after this branch) NAMES the panel
-    block: `policyPanelSchema.primitive` is `primitiveSchema.optional()`, and `checkPanel` validates it -- refusing it
-    beside a measured readout and requiring it absent on the full board. A primitive-bearing PANEL is therefore
-    contract-valid; only the ROW cannot be represented. The route is nonpublishing because the harness that qualifies
-    a primitive never publishes (`policy_source._SELECTOR_CAUSES["submittedPrimitive"]`, and the receipts' `localOnly:
-    true` / `publishable: false`), NOT because the panel block has nowhere to sit. Keeping the old reason would
-    understate the contract and invite the next lane to re-add the field XM already added.
+    THE PANEL HALF IS NOT THE BLOCKING ONE, and the reason recorded here when this lane landed no longer holds. The
+    shipped contract now DOES name an optional primitive block on a policy panel, validated, refused beside a measured
+    readout and required absent on the full board. A primitive-bearing PANEL is therefore contract-valid; only the ROW
+    cannot be represented. The route is nonpublishing because the harness that qualifies a primitive never publishes
+    (`policy_source._SELECTOR_CAUSES["submittedPrimitive"]`, and the receipts' `localOnly: true` / `publishable:
+    false`), NOT because the panel block has nowhere to sit. Keeping the old reason would understate the contract and
+    invite the next lane to re-add a field the contract already has.
 
     Red if the row grows a key, or if the panel stops carrying the kind beside the number."""
     from export_v2.pytests.test_design_price_plumbing import SITE_ROW_FIELDS
