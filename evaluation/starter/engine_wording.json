@@ -1,5 +1,5 @@
 {
- "comment": "Exact passages of the pack's engine copy that the published pack words differently from evaluation/engine (the repository, the epoch-locked source, is not changed): no repository or project name, 'policy check' for 'STO mirror', 'an optimal search' for dynamic programming. build_starter_pack.py applies each rewording to the pack's copy after the other scrubs and stops if a passage is missing, so a change to the engine's text fails the build instead of silently dropping the wording. Derived on 2026-11-19 from the pack published on 2026-11-12 (forshor-site 15beb79).",
+ "comment": "Exact passages of the pack's engine copy that the published pack words differently from evaluation/engine (the repository, the epoch-locked source, is not changed): no repository or project name, 'policy check' for 'STO mirror', 'an optimal search' for dynamic programming. build_starter_pack.py applies each rewording to the pack's copy after the other scrubs and stops if a passage is missing, so a change to the engine's text fails the build instead of silently dropping the wording. Derived on 2026-11-19 from the pack published on 2026-11-12.",
  "rewordings": [
   {
    "file": "forshor_qualtran/mirrors/width.py",
