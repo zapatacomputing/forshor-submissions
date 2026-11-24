@@ -520,39 +520,51 @@ def test_the_cli_refuses_to_publish_a_primitive_qualification(template, tmp_path
 
 # ---------------------------------------------------------------- THE ARCHIVE / PUBLISHER ANSWER
 
-def test_the_archive_needs_no_primitive_hunk_because_the_route_never_reaches_it():
+def test_the_primitive_route_never_reaches_the_archive_whatever_the_archive_admits():
     """THE ARCHIVE ANSWER, pinned executably rather than asserted in a report.
 
     Lane WA added `readout` and `boards` to the index entry for the readout VARIANT planner. A standalone primitive
     needs nothing analogous TODAY, and the reason is reachability, not generosity: `archive_policy.write_policy` is
     only ever called through `archive_policy.archive_policy`, which `intake_v2.main` wires in as `archive_write` on
     the `--publish-from` route alone. `--qualify-primitive` requires `--no-publish`, so no primitive verification can
-    reach the archive at all.
+    reach the archive at all. That is the load-bearing guarantee and it is unchanged; the four parser guards that
+    enforce it are pinned by `test_the_cli_refuses_to_publish_a_primitive_qualification`.
 
-    `plan_readout_variant` does NOT interact with it either, and could not: its `boards` allowlist is exactly
-    `["pp","full"]`, `["full","pp"]` and `["full"]`, so a standalone entry's own board list -- `["pp"]` or `["ptp"]`,
-    which is what a primitive request prices -- is `ArchiveRefused("unrecognized circuit or boards in published
-    archive entry")`. It also keys on `readout`, which a primitive entry does not vary.
+    INTEGRATION XQ -- XG'S SECOND REASON IS OBSOLETE, BY DESIGN, AND THIS TEST NO LONGER ASSERTS IT. As written on
+    lane XG this test also claimed `plan_readout_variant` "could not accept one anyway", because the `boards`
+    allowlist was exactly `["pp","full"]`, `["full","pp"]` and `["full"]`, making a standalone entry's own list --
+    `["pp"]` or `["ptp"]` -- an `ArchiveRefused`. Lane XO then wrote precisely the archive hunk XG had proposed and
+    declined to write: `BOARD_SETS` now admits `["pp"]` and `["ptp"]`, because a synthesis primitive and a QFT design
+    are results, not repeats. So the allowlist no longer refuses those sets, and asserting that it does would pin a
+    behaviour the release deliberately removed. The reachability guarantee above is what keeps the route off the
+    archive; the allowlist never was a second lock, only a coincidence of WA's narrower vocabulary.
 
-    So the archive stays fail-closed with no change. The hunk a FUTURE publishing primitive route would need is a
-    proposal in the lane report, in `archive_policy.py` -- which is not in `verification_identity.INPUTS`, so it is
-    cheap -- and it is not this lane's to write. Red if the primitive route ever gains an archive-writing caller."""
+    What is kept here is the refusal that still holds -- a board set outside `BOARD_SETS` is still refused by name, so
+    the planner is not simply permissive -- and the readout variant's own board list is still accepted, so neither
+    clause is about the fixture. Red if the primitive route ever gains an archive-writing caller."""
     import archive_policy
     from export_v2.primitive_overlay import BOARD_SCHEMA
 
     entry = {"policy_id": "b" * 40, "digest": "d" * 64, "mode": "PhaseProduct", "board": "pp", "sha256": "s" * 64,
              "path": "x", "readout": "coherent",
              "source": {"github_login": "tester", "pr_number": 1, "created_at": "2026-01-01T00:00:00Z", "run_id": "1"}}
-    for board in BOARD_SCHEMA:                       # the two boards a standalone primitive is priced on
-        index = {"policies": [{**entry, "boards": [board]}]}
+
+    def plan(boards):
+        return archive_policy.plan_readout_variant({"policies": [{**entry, "boards": boards}]}, digest="d" * 64,
+                                                   login="tester", head_sha="a" * 40, readout="semiclassical",
+                                                   published_ids={"b" * 40})
+
+    # The two boards a standalone primitive is priced on are now ADMITTED by the planner (lane XO), not refused.
+    for board in BOARD_SCHEMA:
+        assert [board] in [sorted(s) for s in archive_policy.BOARD_SETS], board
+        plan([board])                                # reaches a verdict rather than raising on the board set
+    # Still refused by name: a set outside the admitted vocabulary. The planner widened, it did not open.
+    for boards in (["pp", "ptp"], ["nonsense"], ["pp", "full", "ptp"]):
         with pytest.raises(archive_policy.ArchiveRefused, match="unrecognized circuit or boards"):
-            archive_policy.plan_readout_variant(index, digest="d" * 64, login="tester", head_sha="a" * 40,
-                                                readout="semiclassical", published_ids={"b" * 40})
-    # And the planner still accepts the readout variant's own board lists, so the refusal above is about the
-    # standalone board list and not about the fixture.
-    index = {"policies": [{**entry, "boards": ["pp", "full"]}]}
-    assert archive_policy.plan_readout_variant(index, digest="d" * 64, login="tester", head_sha="a" * 40,
-                                               readout="semiclassical", published_ids={"b" * 40}) == "b" * 40
+            plan(boards)
+    # And the planner still accepts the readout variant's own board list, so the refusals above are about the board
+    # set and not about the fixture.
+    assert plan(["pp", "full"]) == "b" * 40
 
 
 def test_no_primitive_bearing_entry_can_be_published_under_the_shipped_site_contract():
