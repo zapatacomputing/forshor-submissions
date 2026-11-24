@@ -254,3 +254,55 @@ test('organizer baseline requires the registered account and matching verified s
     assert.equal(metadata.githubLogin, 'contributor');
   }
 }));
+
+// ---- the ARCHIVE-REUSE branch and a MEASURED receipt (lane XN's assessment)
+//
+// `publication.js:119` sets download=false once a trusted archived receipt exists, and `prepare` then rebuilds the
+// verification from `submission-results` instead of from a run artifact. Lane XH's origin check establishes a
+// receipt's origin by RE-FETCHING the artifact its stamp names, so the question is whether a measured receipt can
+// reach a branch where there is no fresh artifact to re-fetch. It can: the only export restriction on this branch is
+// `requireOrdinaryExport`, which rejects `submitted_full_run` and nothing else.
+
+const MEASURED_EXPORT = { schema: 'forshor.policy-submission-semiclassical/v1', submitted_readout: 'semiclassical' };
+
+test('a MEASURED verification reaches the archive-reuse branch, with the ORIGINAL run stamp', () => fixture(async f => {
+  const receipt = { ...f.input.identity, runId: '111', runAttempt: 1, pullRequest: 12 };
+  const entry = { policy_id: HEAD, path: `results/policy-submissions/${HEAD}`,
+    source: { repository: 'zapatacomputing/forshor-submissions', run_id: '111', pr_number: 12 } };
+  const archived = { ...f.verification, ciVerification: receipt, printed: MEASURED_EXPORT,
+    localReadoutQualification: { mode: 'semiclassical', evidence: {} } };
+  delete archived.leanSource;
+  const readJson = async (g, c, name) => name.startsWith('leaderboard/')
+    ? { schema: 'forshor.policy-archive/v1', policies: [entry] } : archived;
+  const recovered = await policy.accepted({ ...f.input, readJson });
+  assert.ok(recovered, 'nothing on this branch refuses a qualified measured readout');
+  assert.ok('localReadoutQualification' in recovered.verification);
+
+  fs.unlinkSync('artifacts/verification.json');
+  await policy.prepare({ ...f.input, recovered });
+  const rebuilt = JSON.parse(fs.readFileSync('artifacts/verification.json'));
+  assert.equal(rebuilt.printed.submitted_readout, 'semiclassical');
+  // The stamp -- and so the run and attempt the publisher's origin check will ask GitHub for -- is the ORIGINAL
+  // run's, not this publication's. That run's artifact is exactly the one that is no longer being downloaded.
+  assert.equal(rebuilt.ciVerification.runId, '111');
+  assert.equal(rebuilt.ciVerification.runAttempt, 1);
+  assert.equal(JSON.parse(fs.readFileSync('evaluation-metadata.json')).runId, '111');
+  assert.notEqual(rebuilt.ciVerification.runId, String(f.input.run.id));
+}));
+
+test('the rebuilt archive receipt is byte-equal to the artifact the original run wrote', () => fixture(async f => {
+  // Why the origin check does not merely fail: when the artifact HAS survived, the comparison still holds, because
+  // the archive stores the receipt minus its two source fields and `prepare` puts them back from the archived files.
+  // So the branch is reachable AND agreeing; what it depends on is artifact retention, not evidence.
+  const receipt = { ...f.input.identity, runId: '111', runAttempt: 1, pullRequest: 12 };
+  const original = { ...f.verification, printed: MEASURED_EXPORT,
+    localReadoutQualification: { mode: 'semiclassical', evidence: {} } };          // as the verifier job wrote it
+  const archived = { ...original, ciVerification: receipt };
+  delete archived.leanSource;                                                      // archive_policy.write_policy
+  const recovered = { receipt, base: `results/policy-submissions/${HEAD}`, verification: archived };
+  fs.unlinkSync('artifacts/verification.json');
+  await policy.prepare({ ...f.input, recovered });
+  const rebuilt = JSON.parse(fs.readFileSync('artifacts/verification.json'));
+  delete rebuilt.ciVerification;                                                   // receipt_origin._body
+  assert.deepEqual(rebuilt, original);
+}));
