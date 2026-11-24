@@ -66,6 +66,26 @@ class PolicyPublisherTests(unittest.TestCase):
             args = run.call_args.args[0]
         self.assertNotIn('--summary', args)
 
+    def test_the_publish_job_supplies_the_receipts_trusted_origin(self):
+        """The receipt cannot vouch for itself, so the TRUSTED workflow says where it must have come from.
+
+        Production change that would fail this: dropping `--trusted-origin` from the command, which leaves the origin
+        check inert and keeps lane WQ's blanket refusal of every qualified readout on the only route production uses.
+        """
+        env = {'PUBLISHER_URL': 'https://publisher.example', 'ENGINE_PYTHON': '/engine/python', 'PUBLISHER_TOKEN': 'test-only'}
+        with patch.dict(os.environ, env), patch('sys.argv', ['publish_policy.py']), patch('subprocess.run') as run:
+            run.return_value.returncode = 0
+            publish_policy.main()
+            args = run.call_args.args[0]
+        self.assertIn('--trusted-origin', args)
+        # The origin is established against the run and head the TRUSTED metadata names, never anything the receipt
+        # says, and the token still never appears in argv.
+        self.assertEqual(args[args.index('--head-sha') + 1], self.metadata['headSha'])
+        self.assertEqual(args[args.index('--run-id') + 1], self.metadata['runId'])
+        self.assertNotIn('test-only', args)
+        self.assertFalse([a for a in args if 'GH_TOKEN' in a or 'ghp_' in a])
+
+
 class RetiredPolicyTests(unittest.TestCase):
     def test_retired_head_stops_before_engine_or_archive_work(self):
         import publish_v2

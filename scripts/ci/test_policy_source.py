@@ -427,5 +427,100 @@ class RefusalDifferentiation(unittest.TestCase):
         self.assertNotIn('ForShor.ShorVerification.Framework.Policy,', reason)
 
 
+MEASURED = 'def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }'
+
+
+class DeclaredReadout(unittest.TestCase):
+    """`declared_readout` is how the verifier job knows, BEFORE it builds, whether this submission needs
+    `--qualify-readout`. Three answers and no fourth: coherent, semiclassical, or a refusal."""
+
+    def readout(self, text):
+        from policy_source import declared_readout
+        return declared_readout(text)
+
+    def refusal(self, text):
+        from policy_source import declared_readout
+        with self.assertRaises(ValueError) as caught:
+            declared_readout(text)
+        return str(caught.exception)
+
+    def test_omission_and_the_explicit_default_are_the_same_answer(self):
+        # Owner ruling 2026-11-24, commit a4a7609. Production change that would fail this: recognising the
+        # declaration by its token instead of by `default_selectors`, which would send `{ readout := .coherent }`
+        # down the measured build and change the ForShor build for a submission that asked for the default.
+        self.assertEqual(self.readout(source()), 'coherent')
+        self.assertEqual(self.readout(source(DESIGN)), 'coherent')
+        self.assertEqual(self.readout(source(DESIGN, namespace='PTPPolicySubmission')), 'coherent')
+        self.assertEqual(self.readout(source(DESIGN.replace(':= { readout := .coherent }', 'where\n  readout := .coherent'))),
+                         'coherent')
+        self.assertEqual(self.readout(source(DESIGN, PRIM)), 'coherent')
+
+    def test_the_shipped_measured_declaration_is_the_measured_answer(self):
+        # Production change that would fail this: dropping `_MEASURED_FORMS`, so the verifier never passes
+        # `--qualify-readout` and the two-job flow can still not carry a measured result.
+        self.assertEqual(self.readout(source(MEASURED)), 'semiclassical')
+        self.assertEqual(self.readout(source(MEASURED.replace('Shor.SubmissionDesign', '_root_.Shor.SubmissionDesign'))),
+                         'semiclassical')
+        self.assertEqual(self.readout(source(MEASURED.replace(':= { readout := .semiclassical }', 'where\n  readout := .semiclassical'))),
+                         'semiclassical')
+        # PhaseTripleProduct is recognised here and refused by `intake_v2.policy_from_lean` with its own named
+        # reason; this module does not invent a second spelling of that rule.
+        self.assertEqual(self.readout(source(MEASURED, namespace='PTPPolicySubmission')), 'semiclassical')
+
+    def test_the_measured_declaration_obeys_the_same_shipped_form_as_the_default(self):
+        # Production change that would fail this: recognising the measured value with a loose regex instead of
+        # `default_selectors`' walker. Each of these would then choose the measured build from a declaration Lean
+        # does not read, or reads differently.
+        for label, text in {
+                'wrong type': source(MEASURED.replace('Shor.SubmissionDesign', 'Nat')),
+                'no type': source('def submittedDesign := { readout := .semiclassical }'),
+                'declared twice': source(MEASURED, MEASURED),
+                'measured and default together': source(MEASURED, DESIGN),
+                'decoy namespace': source(MEASURED, namespace='Decoy'),
+                'nested namespace': source(MEASURED, namespace='PolicySubmission.Inner'),
+                'private': source('private ' + MEASURED),
+                'abbrev': source(MEASURED.replace('def ', 'abbrev ')),
+                'indented': source('  ' + MEASURED),
+                'attribute line before': source('@[reducible]', MEASURED),
+                'continued on the next line': source(MEASURED, '  |> id'),
+                'value on the next line': source(MEASURED.replace(':= { readout', ':=\n  { readout')),
+                'used elsewhere': source(MEASURED, 'def alias := submittedDesign'),
+        }.items():
+            with self.subTest(label):
+                self.assertIn('line', self.refusal(text))
+
+    def test_an_unrecognised_readout_refuses_and_never_guesses_a_path(self):
+        # Production change that would fail this: falling back to `coherent` for anything the recogniser does not
+        # know. A build would then silently ignore a readout the participant wrote.
+        for label, text in {'another value': source(MEASURED.replace('.semiclassical', '.teleported')),
+                            'bare mention': source('def alias := submittedDesign'),
+                            'a theorem about it': source(DESIGN, 'theorem t : submittedDesign = default := rfl')}.items():
+            with self.subTest(label):
+                self.assertIn('submittedDesign', self.refusal(text))
+
+    def test_comments_neither_declare_a_readout_nor_hide_one(self):
+        self.assertEqual(self.readout(source('-- ' + MEASURED, '/- ' + MEASURED + ' -/')), 'coherent')
+        self.assertEqual(self.readout(source(MEASURED, '-- ' + DESIGN)), 'semiclassical')
+
+    def test_reading_the_readout_does_not_decide_whether_the_source_is_accepted(self):
+        # `validate` is the gate; `declared_readout` only routes. Production change that would fail this: putting a
+        # readout rule inside `validate`, which would change the accepted set for every submission.
+        validate(source(MEASURED))
+        validate(source(MEASURED.replace('.semiclassical', '.teleported')))
+
+    def test_the_pre_build_refusal_is_the_intakes_own_refusal_word_for_word(self):
+        # The verifier job refuses an unrecognised design before the build and `intake_v2.refuse_unqualified_design`
+        # refuses it during the build. Production change that would fail this: letting either message drift, so a
+        # participant is told two different things about the same line depending on which half ran first.
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'evaluation'))
+        import intake_v2
+        from policy_source import READOUT_REFUSAL
+        text = source(MEASURED.replace('.semiclassical', '.teleported'))
+        with self.assertRaises(intake_v2.Refused) as intake:
+            intake_v2.refuse_unqualified_design(text)
+        self.assertEqual(self.refusal(text), intake.exception.reason)
+        self.assertTrue(intake.exception.reason.startswith(READOUT_REFUSAL))
+
+
 if __name__ == '__main__':
     unittest.main()

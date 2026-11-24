@@ -920,6 +920,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--qualify-primitive", action="store_true", help="LOCAL ONLY, and it never publishes: compile and price a standalone synthesis primitive (catalyticB2, adaptiveB3) on the PhaseProduct or PhaseTripleProduct board, at the primitive rule's own pinned verifier. Requires --no-publish and --lean-policy, and takes no publisher URL; the result gets no score and the publisher refuses it")
     ap.add_argument("--organizer-baseline", choices=["baseline-gpt", "baseline-claude", "baseline-gpt-6.2-sol", "baseline-claude-opus-5-5", "baseline-gpt-6.2-sol-medium", "baseline-claude-opus-5-5-medium"], help="Display identity assigned by trusted publication CI")
     ap.add_argument("--publish-from", type=Path, help="price and publish a verification written by --no-publish (the trusted half of CI): no Lean runs, and everything in it is checked again")
+    ap.add_argument("--trusted-origin", action="store_true", help="with --publish-from, in the trusted publish job only: establish where the receipt came from by re-deriving this "
+                    "checkout's verification identity and re-fetching the artifact the receipt's ciVerification stamp names (needs GH_TOKEN, and only when a receipt actually "
+                    "carries a qualified readout). Without it a qualified readout receipt is refused, as it always was")
     ap.add_argument("--login", required=True, help="the submitter's GitHub handle (the PR author)")
     ap.add_argument("--pull", type=int, help="the pull request number (not needed with --no-publish)")
     ap.add_argument("--head-sha", help="the PR head commit (40 hex); default: derived from the policy")
@@ -956,6 +959,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             ap.error("--qualify-primitive never publishes: it requires --no-publish")
         if a.publisher_url:
             ap.error("--qualify-primitive is local only: it takes no publisher URL")
+    if a.trusted_origin and a.publish_from is None:
+        ap.error("--trusted-origin goes with --publish-from: it establishes where a receipt this process did not produce came from")
     if a.publish_from is not None:
         if a.no_publish:
             ap.error("--publish-from publishes: it cannot be combined with --no-publish")
@@ -1015,9 +1020,16 @@ def _run_args(a, ap, verification_path):
                                       published_ids=published)
     try:
         if a.publish_from is not None:
+            # The trusted workflow supplies the origin; the receipt never does. `trusted_origin` reads GH_TOKEN only
+            # when a fetch actually happens, so an ordinary coherent publication -- which never reaches the origin
+            # check -- is unaffected whether the flag is given or not.
+            origin = None
+            if a.trusted_origin:
+                from export_v2 import receipt_origin
+                origin = receipt_origin.trusted_origin()
             result = publish_verification(json.loads(a.publish_from.read_text()), login=a.login, pull=a.pull, url=a.publisher_url, token=token, workdir=a.workdir,
                                           head_sha=a.head_sha, run_id=a.run_id, archive_commit=a.archive_commit, archive_view=archive_view,
-                                          archive_write=archive_write, organizer_baseline=a.organizer_baseline)
+                                          archive_write=archive_write, organizer_baseline=a.organizer_baseline, origin=origin)
         elif a.no_publish:
             source = a.lean_policy.read_bytes().decode("utf-8") if a.lean_policy else None
             v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=source, summary=summary_text, login=a.login,

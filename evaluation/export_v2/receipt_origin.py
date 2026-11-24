@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import zipfile
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional
@@ -58,6 +59,10 @@ MEMBER = "verification.json"
 #: A receipt carries the submitted Lean source (at most 1 MB), the mirror envelope and the compiled document. Eight
 #: mebibytes is far above any real receipt and well below anything that could exhaust the publisher.
 MAX_MEMBER_BYTES = 8 * 1024 * 1024
+
+#: The same bound one level down, on the bytes that come off the wire, so a hostile or broken response cannot exhaust
+#: the publisher before `read_member` ever gets to bound the member it unpacks.
+MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 
 REPOSITORY = "zapatacomputing/forshor-submissions"
 
@@ -133,6 +138,32 @@ def github_fetcher(token: str, *, opener: Callable[[str, str], bytes], repositor
     return fetch
 
 
+def urllib_opener(token: str, *, timeout: int = 30, urlopen: Optional[Callable[..., Any]] = None,
+                  build: Optional[Callable[..., Any]] = None) -> Callable[[str, str], bytes]:
+    """`github_fetcher`'s transport, over urllib. The token travels in the Authorization header only -- never in the
+    URL, never in argv -- which is the same rule `archive_policy._env` and `publish.refresh_archive` follow.
+
+    `urlopen`/`build` are the two urllib calls, injected so everything this decides is provable without a network:
+    that the token is a header and not part of the URL, that the response is read under `MAX_RESPONSE_BYTES`, and
+    that a transport failure reaches `github_fetcher` as a failure (which it turns into `OriginUnavailable`, never a
+    verdict). WHAT IS STILL UNPROVEN AND IS GATE B4: a real HTTPS request to api.github.com. No test makes one.
+    """
+    import urllib.request
+    request_for = build or urllib.request.Request
+    send = urlopen or urllib.request.urlopen
+
+    def open_url(url: str, accept: str) -> bytes:
+        request = request_for(url, headers={"Authorization": f"Bearer {token}", "Accept": accept,
+                                            "X-GitHub-Api-Version": "2022-11-28"})
+        with send(request, timeout=timeout) as response:
+            body = response.read(MAX_RESPONSE_BYTES + 1)
+        if len(body) > MAX_RESPONSE_BYTES:
+            raise OriginUnavailable(f"the trusted artifact response is larger than {MAX_RESPONSE_BYTES} bytes")
+        return body
+
+    return open_url
+
+
 def checkout_identity(head_sha: str, root: Optional[Any] = None) -> Dict[str, Any]:
     """The verification identity of THIS checkout at `head_sha`, re-derived by the very function the trusted stamp was
     made with (`scripts/ci/verification_identity.py:identity`).
@@ -161,6 +192,25 @@ class ReceiptOrigin:
 
     def __init__(self, *, identity: Callable[[str], Dict[str, Any]], fetch: Callable[[str, Any, Any], bytes]):
         self.identity, self.fetch = identity, fetch
+
+
+def trusted_origin(root: Optional[Any] = None, *, token: Optional[Callable[[], str]] = None,
+                   repository: str = REPOSITORY, timeout: int = 30) -> ReceiptOrigin:
+    """The production `ReceiptOrigin`: the identity re-derived from the checkout at `root`, the artifact fetched from
+    GitHub. This is the injection point `scripts/ci/publish_policy.py` wires in, through `intake_v2 --trusted-origin`.
+
+    `token()` is called only when a fetch actually happens. That is not a convenience: the coherent path never reaches
+    the origin check, so an ordinary publication must not need a token to exist at all -- and a test can pass a
+    `token` that fails, to prove the path was never taken.
+    """
+    read_token = token if token is not None else (lambda: os.environ["GH_TOKEN"])
+
+    def fetch(name: str, run_id: Any, run_attempt: Any) -> bytes:
+        secret = read_token()
+        return github_fetcher(secret, opener=urllib_opener(secret, timeout=timeout), repository=repository,
+                              timeout=timeout)(name, run_id, run_attempt)
+
+    return ReceiptOrigin(identity=lambda head: checkout_identity(head, root), fetch=fetch)
 
 
 def establish(receipt: Dict[str, Any], *, head_sha: Optional[str], run_id: Optional[str], pull: int,

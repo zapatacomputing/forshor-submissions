@@ -363,5 +363,87 @@ class OptionalSummary(unittest.TestCase):
         self.assertFalse(list(self.tmp.rglob("CANARY")), "nothing ran the \\write18 line")
 
 
+DESIGN = "def submittedDesign : Shor.SubmissionDesign := { readout := .coherent }\n"
+MEASURED = "def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }\n"
+
+
+def with_design(text, declaration):
+    """`text` with `declaration` at column 0 inside its board namespace, where Lean reads the selector."""
+    return text.replace("def policy := 1\n", declaration + "def policy := 1\n")
+
+
+class ReadoutQualification(unittest.TestCase):
+    """Which build the verifier job asks for. It is the job that PRODUCES the receipt, so a measured receipt exists
+    only if this job passed `--qualify-readout` -- and an ordinary submission must take the build it always took."""
+
+    def setUp(self):
+        self.t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self.t.name)
+        self.repo = self.tmp / "repo"
+        (self.repo / "TableGeneration/Submission").mkdir(parents=True)
+        self.out = self.tmp / "out"
+        (self.tmp / "forshor").mkdir()
+
+    def tearDown(self):
+        self.t.cleanup()
+
+    def run_pv(self, text):
+        (self.repo / pv.SUBMISSION).write_text(text)
+        code = pv.run(self.repo, self.out, get_changed_files=lambda repo: (True, [pv.SUBMISSION], "Compared base...head."),
+                      env={"FORSHOR_TREE": str(self.tmp / "forshor")},
+                      intake=stub(self.tmp, {"verified": True, "policy": {"digest": "a" * 64, "mode": "PhaseProduct", "bands": 1, "forshorPolicy": True}}))
+        result = json.loads((self.out / "table-generation-submission-result.json").read_text())
+        argv_path = self.repo / "args.json"
+        if not argv_path.exists():
+            return code, result, None
+        # Each case gets its own temporary root, so compare the SHAPE of the command, not where it ran.
+        return code, result, [part.replace(str(self.tmp), "$TMP") for part in json.loads(argv_path.read_text())]
+
+    def test_a_declared_semiclassical_readout_asks_for_the_measured_build(self):
+        # THE LINK. Production change that would fail this: scripts/policy_verifier.py not passing
+        # `--qualify-readout`, which is exactly the state this lane found -- the verifier job then emits a coherent
+        # receipt with no `localReadoutQualification` and the publisher has nothing to establish an origin for.
+        code, result, argv = self.run_pv(with_design(PP, MEASURED))
+        self.assertEqual((code, result["status"]), (0, "success"))
+        self.assertIn("--qualify-readout", argv)
+
+    def test_an_ordinary_submission_asks_for_exactly_the_build_it_always_did(self):
+        # Production change that would fail this: passing `--qualify-readout` unconditionally, which would change the
+        # ForShor build for every submission. Omission and the explicit default must give the SAME command.
+        omitted = self.run_pv(PP)[2]
+        self.assertNotIn("--qualify-readout", omitted)
+        for text in (with_design(PP, DESIGN), PTP, with_design(PTP, DESIGN)):
+            self.setUp()
+            self.assertEqual(self.run_pv(text)[2], omitted)
+
+    def test_the_explicit_default_readout_is_identical_to_omission(self):
+        # Owner ruling 2026-11-24, commit a4a7609: an explicit default token is identical to omission. Production
+        # change that would fail this: recognising `submittedDesign` by its token rather than through
+        # `policy_source.default_selectors`, which would send the default down the measured build.
+        for text in (PP, with_design(PP, DESIGN)):
+            (self.repo / pv.SUBMISSION).write_text(text)
+            self.assertEqual(pv.submitted_readout(self.repo), "coherent")
+
+    def test_an_unrecognised_readout_refuses_before_anything_is_built(self):
+        # Production change that would fail this: defaulting an unreadable declaration to the coherent build, which
+        # would compile a policy while ignoring the readout its author asked for.
+        code, result, argv = self.run_pv(with_design(PP, MEASURED.replace(".semiclassical", ".teleported")))
+        self.assertEqual((code, result["status"]), (1, "failure"))
+        self.assertEqual(result["checks"][-1]["name"], "policy-source")
+        self.assertIn("submittedDesign", result["checks"][-1]["details"])
+        self.assertIsNone(argv, "no build was started")
+        self.assertIsNone(result["verification"])
+        self.assertFalse((self.out / "verification.json").exists(), "and no receipt was left behind")
+
+    def test_the_recogniser_is_the_source_gates_own_and_not_a_second_spelling(self):
+        # Production change that would fail this: a private copy of the readout grammar in the verifier. The CI
+        # source gate, this job and `evaluation/intake_v2.py` must agree about what a line means.
+        sys.path.insert(0, str(Path(pv.__file__).resolve().parents[1]))
+        from scripts.ci import policy_source
+        for text in (PP, with_design(PP, DESIGN), with_design(PP, MEASURED)):
+            (self.repo / pv.SUBMISSION).write_text(text)
+            self.assertEqual(pv.submitted_readout(self.repo), policy_source.declared_readout(text))
+
+
 if __name__ == "__main__":
     unittest.main()

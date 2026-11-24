@@ -58,6 +58,15 @@ _DEFAULT_FORMS = {   # name: (declaration after the name, boards where Lean read
                         rf'|where[ \t]*\n[ \t]+readout[ \t]*:=[ \t]*\.coherent)', _BOARDS),
 }
 _DEFAULT_DECL = {name: re.compile(rf'def[ \t]+{name}[ \t]*{form}[ \t]*(?:\n|\Z)') for name, (form, _) in _DEFAULT_FORMS.items()}
+# The MEASURED readout declaration, in the very same shipped form as the explicit default above and recognised by the
+# very same walker: one `def` at column 0 directly inside the board's namespace, the repo's type, the value on the
+# statement and nothing continuing it. This is the only non-default selection anything here recognises, because it is
+# the only one with a route that publishes (`--qualify-readout`); every other selection stays refused exactly as it is.
+_MEASURED_FORMS = {
+    'submittedDesign': (rf':[ \t]*{_SHOR}SubmissionDesign[ \t]*(?::=[ \t]*\{{[ \t]*readout[ \t]*:=[ \t]*\.semiclassical[ \t]*\}}'
+                        rf'|where[ \t]*\n[ \t]+readout[ \t]*:=[ \t]*\.semiclassical)', _BOARDS),
+}
+_MEASURED_DECL = {name: re.compile(rf'def[ \t]+{name}[ \t]*{form}[ \t]*(?:\n|\Z)') for name, (form, _) in _MEASURED_FORMS.items()}
 _COMMAND_START = re.compile(r'(?:end|def|abbrev|theorem|lemma|example|namespace|open|section|variable|universe|structure|inductive)\b')
 _MODIFIER_LINE = re.compile(r'(?:@\[|private\b|protected\b|noncomputable\b|unsafe\b|partial\b|nonrec\b|scoped\b|local\b)')
 _NAMESPACE = re.compile(r'namespace[ \t]+([A-Za-z_][\w.]*)[ \t]*$')
@@ -65,13 +74,17 @@ _SECTION = re.compile(r'section\b')
 _END = re.compile(r'end\b')
 
 
-def default_selectors(text):
+def default_selectors(text, *, forms=_DEFAULT_FORMS, declarations=_DEFAULT_DECL):
     """(`text` with each explicit default declaration blanked, {selector: board namespace}) for comment-stripped source.
 
     Line count is preserved. A declaration is consumed only once per selector, only at column 0 directly inside the
     board's namespace, and only when the next non-blank line starts a new command at column 0 (so no continuation
     line can change the value) and the previous one is not a modifier or attribute line. The rest of the file,
-    including any second declaration or any other mention of the selector, is left for the refusal checks."""
+    including any second declaration or any other mention of the selector, is left for the refusal checks.
+
+    `forms`/`declarations` select WHICH declarations are consumed, and default to the explicit defaults, so every
+    existing caller is unchanged. `declared_readout` passes `_MEASURED_FORMS` to recognise the measured readout under
+    exactly this discipline rather than a second, looser one."""
     lines = text.split('\n')
     consumed = {}
     scopes = []
@@ -85,10 +98,10 @@ def default_selectors(text):
             scopes.pop()
         namespace = '.'.join(part for part in scopes if part)
         found = re.match(r'def[ \t]+(submitted\w+)', line)       # column 0 only
-        if not found or found[1] not in _DEFAULT_DECL or found[1] in consumed or namespace not in _DEFAULT_FORMS[found[1]][1]:
+        if not found or found[1] not in declarations or found[1] in consumed or namespace not in forms[found[1]][1]:
             continue
         rest = '\n'.join(lines[i:i + 2]) + '\n'
-        match = _DEFAULT_DECL[found[1]].match(rest)
+        match = declarations[found[1]].match(rest)
         if not match:
             continue
         span = match.group(0).count('\n')                      # lines the declaration occupies
@@ -178,6 +191,46 @@ def selector_cause(residual, selector='submittedFullRunDesign'):
     return number, (f'this declaration selects the default {default_noun}, but not in the shipped form '
                     f'`{shipped}` ({_shipped_form_rule(selector)}); rewrite it, or omit it, and the '
                     'ordinary route accepts the policy')
+
+
+#: The two readout designs. `coherent` is the default and the only one an ordinary submission may declare;
+#: `semiclassical` is the measured design that `evaluation/export_v2/readout_overlay.py` prices and that the intake
+#: compiles only under `--qualify-readout`.
+READOUTS = ('coherent', 'semiclassical')
+
+#: The leading sentence of the refusal for an unrecognised `submittedDesign`. It is `evaluation/intake_v2.py`'s own
+#: `refuse_unqualified_design` anchor: the verifier job decides the readout BEFORE the build and the intake decides it
+#: again DURING the build, and the two must not tell a participant two different things about the same line.
+READOUT_REFUSAL = 'submittedDesign is not enabled for ordinary submissions; it requires local readout qualification'
+
+
+def declared_readout(source):
+    """Which readout design `source` declares: one of `READOUTS`. Raises `ValueError` for anything else.
+
+    `scripts/policy_verifier.py` needs this answer BEFORE it builds, because the measured design is the one whose
+    build takes `--qualify-readout` and an ordinary submission must take the build it takes today, unchanged. So the
+    answer has to come from the source and nothing else; recognition is lexical only (nothing is run) and Lean still
+    decides validity.
+
+    Three answers, no fourth:
+
+      * `coherent` -- the declaration is omitted, OR it is the explicit default `{ readout := .coherent }`, which
+        owner ruling 2026-11-24 makes identical to omission. Both leave no `submittedDesign` in the residual.
+      * `semiclassical` -- the measured declaration, in the one shipped form, consumed by the same walker under the
+        same discipline (`default_selectors`).
+      * `ValueError` -- anything else: another value, a mis-written default, a bare mention, a second declaration.
+        The path is REFUSED rather than guessed, and the cause is `selector_cause`'s, so the pre-build refusal names
+        the same line and the same participant action the intake's own refusal would have named.
+    """
+    text = strip_lean_comments(source)
+    residual = without_default_selectors(text)
+    if not _SELECTOR_TOKEN['submittedDesign'].search(residual):
+        return 'coherent'                             # omitted, or the explicit default: the same build either way
+    measured, consumed = default_selectors(text, forms=_MEASURED_FORMS, declarations=_MEASURED_DECL)
+    if 'submittedDesign' in consumed and not _SELECTOR_TOKEN['submittedDesign'].search(measured):
+        return 'semiclassical'
+    number, cause = selector_cause(residual, 'submittedDesign')
+    raise ValueError(f'{READOUT_REFUSAL}: line {number}, {cause}')
 
 
 def check_no_full_run_selector(text):

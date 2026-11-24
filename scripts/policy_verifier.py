@@ -53,6 +53,24 @@ def applies(repo: Path) -> bool:
     return path.is_file() and is_policy_file(path.read_text(errors="replace"))
 
 
+def submitted_readout(repo: Path) -> str:
+    """Which readout design the submission in `repo` declares, so the build can be the one that design needs.
+
+    The verifier job is the half that PRODUCES the receipt, and a measured receipt only exists if the build compiled
+    the readout (`--qualify-readout`). Passing that flag unconditionally would change the ForShor build for every
+    submission, so the flag is conditional on this answer -- and this answer comes from the submitted source, read
+    lexically, before anything is built.
+
+    The recogniser is `scripts/ci/policy_source.py:declared_readout`, the same module the CI source gate already
+    applies to this file and the same one `evaluation/intake_v2.py` imports to classify the selector, so the verifier
+    cannot disagree with either about what a line means. `ValueError` for an unrecognised declaration: the verifier
+    then refuses rather than choosing a build for a file it cannot read.
+    """
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.ci.policy_source import declared_readout
+    return declared_readout((Path(repo) / SUBMISSION).read_text(encoding="utf-8"))
+
+
 def check(name: str, ok: bool, details: str) -> Dict[str, str]:
     return {"name": name, "status": "success" if ok else "failure", "details": details}
 
@@ -137,12 +155,29 @@ def _run(repo, out_dir, get_changed_files, env, intake, preflight, lock_fd):
     if all(c["status"] == "success" for c in checks) and not preflight:
         forshor = env.get("FORSHOR_TREE")
         sto = env.get("STO_TREE") or str(repo)
+        readout, unreadable = None, None
+        try:
+            readout = submitted_readout(repo)
+        except ValueError as error:
+            unreadable = str(error)
+        except OSError as error:
+            unreadable = f"the submitted {SUBMISSION} could not be read: {error}"
         if not forshor or not Path(forshor).is_dir():
             checks.append(check("trees", False, "FORSHOR_TREE must name a built ForShor checkout (the trusted environment is not prepared)"))
+        elif unreadable is not None:
+            # An unrecognised `submittedDesign` has no build: the coherent build would ignore a declaration the
+            # participant wrote, and the measured build would compile one they did not write. Refuse, before Lean.
+            checks.append(check("policy-source", False, unreadable))
         else:
             cmd = intake or [env.get("ENGINE_PYTHON") or sys.executable, str(HERE.parent / "evaluation" / "intake_v2.py")]
             cmd = cmd + ["--lean-policy", str(repo / SUBMISSION), "--login", env.get("TABLE_GEN_LOGIN") or "local-check", "--no-publish", "--tree", sto, "--forshor-tree", forshor,
                          "--workdir", str(out_dir / "work"), "--verification-out", str(receipt_path), "--out", str(result_path)]
+            if readout == "semiclassical":
+                # The ONE conditional flag, and the one that makes the two-job flow able to carry a measured result:
+                # without it the build is coherent and the receipt has no `localReadoutQualification`, so the
+                # publisher has nothing to establish an origin for. A coherent submission adds nothing here and its
+                # command is byte-identical to the one this job has always run.
+                cmd += ["--qualify-readout"]
             if summary_data is not None:
                 cmd += ["--summary", str(repo / SUMMARY)]
             if env.get("POLICY_STAGE_TIMEOUT"):

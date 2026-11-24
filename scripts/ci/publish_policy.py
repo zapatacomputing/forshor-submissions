@@ -35,9 +35,15 @@ def main():
                     "headSha": metadata["headSha"], "login": metadata["githubLogin"], "pull": metadata["pullRequest"],
                     "digest": metadata["policyDigest"]}}))
         return 0
+    # `--trusted-origin` is where the trusted workflow supplies the origin the receipt cannot supply for itself: the
+    # publisher re-derives this checkout's verification identity and re-fetches the artifact the receipt's
+    # ciVerification stamp names, and the COMPARISON is what authorises. It is unconditional because it is inert for
+    # every ordinary submission -- only a receipt carrying a qualified readout reaches the check at all -- and because
+    # the alternative, deciding here whether the receipt is measured, would be trusting the receipt to say so.
     command = [os.environ["ENGINE_PYTHON"], str(REPO / "evaluation/intake_v2.py"),
                "--publish-from", "artifacts/verification.json", "--login", metadata["githubLogin"],
                "--pull", str(metadata["pullRequest"]), "--head-sha", metadata["headSha"], "--run-id", metadata["runId"],
+               "--trusted-origin",
                "--publisher-url", url, "--archive", "archive", "--workdir", "policy-publication-work", "--out", "publication-result.json"]
     if metadata.get("organizerBaseline"):
         command.extend(["--organizer-baseline", metadata["organizerBaseline"]])
