@@ -7,8 +7,8 @@ route) — those need different participant actions — so each class gets its o
 
 Every test below names the production change that would make it fail. Matching is by
 anchored, class-level patterns on the *cause* clause, never on incidental wording.
-The two causes that used to collide here are enumerated as the module-level patterns below,
-one per cause, and each test drives the one it names.
+The two causes that used to collide here are census collisions C1 and C2, enumerated as the
+module-level patterns below, one per cause, and each test drives the one it names.
 """
 import re
 import sys

@@ -230,8 +230,9 @@ class RefusalDifferentiation(unittest.TestCase):
     Owner priority 2026-11-24: differentiating incorrect policies from correct ones is the
     priority. One message over several causes cannot tell a PARTICIPANT ERROR (rewrite the file)
     from an UNSUPPORTED-BUT-VALID request (use the dedicated nonpublishing route), and those need
-    different participant actions. The four causes that used to collide are enumerated as the
-    class-level patterns below, one per cause, and each test drives the one it names.
+    different participant actions. The four causes that used to collide are census collisions
+    C5, C6, C7 and C8, enumerated as the class-level patterns below, one per cause, and each
+    test drives the one it names.
 
     Matching is on anchored, class-level patterns naming the CAUSE, never on incidental wording.
     Nothing here changes what is accepted or refused: every source below was refused before too.
