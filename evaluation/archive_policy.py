@@ -33,8 +33,29 @@ prices by default -- so every row already on the branch keeps exactly the keys i
                 that was priced -- lanes WY/WM/WX; `export_v2.qft_overlay`, at `mapping.DESIGN_DELTA` on the full board
                 only, the other three deltas being the design-free panels of the same policy that they are
 
-The archive is the ONLY durable record of the design and the primitive. The ledger row cannot carry either: `rowSchema` is a Zod `strictObject` whose `rowFields`
-name neither (lane XF, INTEGRATION-WAVE2.md "The row/design seam"), and `mapping.row_of` copies no such key -- yet `mapping.ranked_price_of` now ranks the QFT
+`intake_v2.publish_verification` passes all three at the archive call site (owner ruling 2026-11-24, ruling 1). Before that it passed none, so a published MEASURED
+submission was archived as a legacy -- i.e. COHERENT -- entry.
+
+A PRIMITIVE QUALIFICATION IS NOT ARCHIVED, AND THAT IS THE DESIGN
+-----------------------------------------------------------------
+Owner ruling, 2026-11-24 (ruling 3). The `primitive` key above is for a PUBLISHED primitive-bearing submission. It is NOT for a primitive QUALIFICATION, which is
+local-only by design and can never reach this module at all:
+
+  * `intake_v2.publish_verification` refuses any receipt carrying `localPrimitiveQualification`, and any compiled document carrying `submitted_primitive`, and that
+    refusal fires BEFORE `archive_write` is called (`test_the_primitive_refusal_fires_before_the_archive_is_written`);
+  * `--qualify-primitive` requires `--no-publish`, while `archive_write` is wired on `--publish-from` alone, so the two flag sets do not intersect
+    (`test_the_cli_refuses_to_publish_a_primitive_qualification`).
+
+DO NOT ADD A NONPUBLISHING ARCHIVE-WRITE PATH. The absence of one is not missing architecture; it is the route keeping the promise it has always made (the receipts
+carry `localOnly: true` / `publishable: false`, and the published row's closed field set -- `SITE_ROW_FIELDS` in `export_v2/pytests/test_design_price_plumbing.py` --
+names no primitive price, which the publisher's validators reject rather than ignore). This note exists because the opposite reading has had
+to be corrected three times already in this release -- a default-off gate read as "no publication path", a closed enum read as "not expressible", a `staging_*`
+filename read as "awaiting deployment". A conservative guard is not a gap. `primitive` and its `tKind` stay exactly as lane XO wrote them: unused they cost nothing,
+and they are correct the day a primitive-bearing submission is published.
+
+The archive is the ONLY durable record of the design and the primitive. The ledger row cannot carry either: the published row's field set is CLOSED -- an
+unrecognised key is rejected, not ignored -- and it names neither (lane XF, INTEGRATION-WAVE2.md "The row/design seam"; the field set is transcribed into this
+repository as `SITE_ROW_FIELDS` in `export_v2/pytests/test_design_price_plumbing.py`), and `mapping.row_of` copies no such key -- yet `mapping.ranked_price_of` now ranks the QFT
 projection's own T and qubits, so a design-bearing row would carry the projection's numbers with nothing naming the design. The compiled selection itself is
 archived verbatim inside `verification.json` (`printed.submitted_full_run` / `submitted_primitive`); the index key is what makes it findable, comparable and
 visible to the variant rules below, which is what WA's `readout` key is for too.
@@ -45,18 +66,19 @@ An entry says WHICH result was archived; it has never carried the number, and `c
 
   * `adaptiveB3`'s T is an UNCONDITIONAL EXPECTED value, not a bound, and `catalyticB2`'s is deterministic. Lane XA made the two structurally uncollapsible --
     no bare `T` field, `tKind` plus exactly one of `tDeterministic` / `tExpectedAdaptive` (`primitive_overlay.py:212-217`). A bare `T` on an index entry would
-    undo that here, in the one place the result is kept forever. So a primitive-bearing entry records `tSiteKind` -- XA's own axis, under the name lane XL gave
-    it -- and no number at all.
+    undo that here, in the one place the result is kept forever. So a primitive-bearing entry records `tKind` -- XA's own axis, under XA's own name (owner ruling
+    2026-11-24, ruling 2: the per-site axis keeps the short key because it is the one that is structurally enforced and reaches production) -- and no number at all.
   * Tier 3B (Step 4 adaptive, controlled Steps 1/5; lane XL) prices by SAMPLING: its artifacts self-label `"estimate": true, "circuit_bound": false`. An estimate
     and a bound are different claims about a board, and the archive is where a reader compares entries, so an estimate-priced entry MUST be distinguishable from a
     bound-priced one without reading the number. The requirement, as a proposal -- XL's shape is not settled (their `sampled_fallback.t_fields` /
     `check_t_fields` are in flight), so no schema is invented here:
-      1. a `tKind` key from a closed vocabulary naming the CLAIM CLASS ("circuitBound" / "sampledEstimate"), never a bare T. `tKind` is deliberately left unwritten
-         today and RESERVED for it: XA's committed `tKind` and XL's in-flight `tKind` carry two different vocabularies (XA's per-site deterministic /
-         expectedAdaptive, XL's claim-class circuitBound / sampledEstimate), and XL's `tSiteKind` is the name that separates them. When Tier 3B lands, primitive
-         entries gain `tKind: "circuitBound"` in the same change; until then no entry claims a class, rather than claiming the wrong one.
-      2. the two axes stay orthogonal: a sampled estimate OF an expected-adaptive per-site T is twice removed from a worst case, so `tSiteKind` is recorded beside
-         `tKind`, not folded into it.
+      1. a `tClaimKind` key from a closed vocabulary naming the CLAIM CLASS ("circuitBound" / "sampledEstimate"), never a bare T. `tClaimKind` is deliberately left
+         unwritten today and RESERVED for it. The collision that reservation was holding open is now SETTLED (owner ruling 2026-11-24, ruling 2): XA's committed
+         per-site axis keeps `tKind` -- here, in `export_v2.sampled_fallback`, and in the published primitive block, which is a union DISCRIMINATED on it -- and XL's
+         claim class is renamed `tClaimKind`. When Tier 3B lands, primitive entries gain `tClaimKind: "circuitBound"` in the same change; until then no entry claims
+         a class, rather than claiming the wrong one.
+      2. the two axes stay orthogonal: a sampled estimate OF an expected-adaptive per-site T is twice removed from a worst case, so `tKind` is recorded beside
+         `tClaimKind`, not folded into it.
       3. whether the estimate is rankable at all (XL's receipt: `rankable = not out_of_contract`) and the provenance that makes it auditable -- the contract digest
          and the sample/inventory digests their receipt already carries -- so a reader can tell an in-contract estimate from one whose stratum overran its range.
     Until a caller exists, an estimate-priced entry simply cannot be archived: `write_policy` admits the three axes above and nothing else.
@@ -254,9 +276,9 @@ def check_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
         raise ArchiveRefused(f"an archive entry records which result was archived, never the number: remove {bare} "
                              "and record a field whose name says what kind of number it is")
     primitive = entry.get("primitive")
-    if primitive is not None and entry.get("tSiteKind") != PRIMITIVE_T_SITE_KIND.get(primitive):
+    if primitive is not None and entry.get("tKind") != PRIMITIVE_T_SITE_KIND.get(primitive):
         raise ArchiveRefused(f"{primitive} prices a {PRIMITIVE_T_SITE_KIND.get(primitive)!r} T, not a "
-                             f"{entry.get('tSiteKind')!r} one; a deterministic and an expected T are never the same claim")
+                             f"{entry.get('tKind')!r} one; a deterministic and an expected T are never the same claim")
     return entry
 
 
@@ -273,6 +295,12 @@ def plan_readout_variant(index: Dict[str, Any], *, digest: str, login: str, head
     Take only visible records into account. Legacy records omit both circuit
     and board metadata and mean coherent readout with a primitive result.
     Future opt-in entries can carry `readout` and `boards` without backfill.
+
+    THAT OPT-IN HAS ARRIVED (owner ruling 2026-11-24, ruling 1):
+    `intake_v2.publish_verification` now passes the readout, the primitive and
+    the design at the archive call site, so a published measured submission
+    reaches this planner as the variant it is instead of as the default it is
+    not. Nothing is backfilled: a legacy row is still read exactly as written.
 
     The name is lane WA's and the readout rule is theirs, unchanged. The planner now compares on the whole result kind
     (`KIND_DEFAULT`): a repeat is the same policy priced the SAME way on every axis, and differing on any axis -- the
@@ -347,8 +375,8 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
 
     `primitive` is the declared synthesis primitive (`PRIMITIVE_T_SITE_KIND`; None is the default `rossSelinger`, which stamps nothing and is recorded as no key) and
     `design` the QFT design that was priced (None is no design). They are the same arrangement as `readout`, one axis each, and the planner now compares on all three:
-    a repeat is the same policy priced the same way throughout. A primitive-bearing entry also records `tSiteKind`, so the one durable record of an `adaptiveB3` price
-    says it is an expectation; it records no number at all, and `check_entry` refuses an entry that would."""
+    a repeat is the same policy priced the same way throughout. A primitive-bearing entry also records `tKind` -- XA's per-site axis, under XA's own name (owner ruling
+    2026-11-24) -- so the one durable record of an `adaptiveB3` price says it is an expectation; it records no number at all, and `check_entry` refuses an entry that would."""
     if not HEAD.fullmatch(head_sha):
         raise ArchiveRefused("the head commit is not a 40-hex sha")
     if not source.strip():
@@ -402,7 +430,7 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
         entry["boards"] = boards
         if primitive is not None:
             entry["primitive"] = primitive
-            entry["tSiteKind"] = PRIMITIVE_T_SITE_KIND[primitive]
+            entry["tKind"] = PRIMITIVE_T_SITE_KIND[primitive]
         if design is not None:
             entry["design"] = {family: design[family] for family in sorted(design)}
     check_entry(entry)

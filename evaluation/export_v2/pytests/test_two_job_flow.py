@@ -388,6 +388,59 @@ def test_the_origin_flag_belongs_to_the_receipt_route_only(tmp_path):
                         "--tree", str(tmp_path), "--no-publish"])
 
 
+# ---------------------------------------------------------------- what the archive records about a PUBLISHED result
+
+
+@pytest.mark.slow
+def test_a_published_measured_submission_is_archived_as_the_measured_result(measured_source, publisher, tmp_path):
+    """OWNER RULING 2026-11-24 (ruling 1), end to end on the receipt the verifier job really wrote.
+
+    `publish_verification` called `archive_write(v)` with NO result kind, so `archive_policy.archive_policy` fell
+    back to its own defaults (`readout="coherent"`, no primitive, no design) and this -- a published MEASURED
+    submission, the only kind this flow produces -- was archived as a LEGACY entry. `entry_kind` reads a legacy entry
+    as the coherent readout, so the one durable record of the result said the wrong thing, and
+    `plan_readout_variant` compared this submission against the default it is not: the participant's own coherent
+    copy of the same policy was a REPEAT of it rather than the variant pair lane WA built the planner for.
+
+    The production change that fails this test is reverting the kind arguments at `intake_v2.py`'s `archive_write`
+    call: the entry then carries neither `readout` nor `boards` and the first assertion below reads `coherent`.
+
+    The whole chain is exercised, not a spy's argument list: the receipt goes through `publish_verification`, the
+    spy forwards exactly what it was handed to the real `archive_policy.write_policy`, and the assertions read the
+    index entry that lands on disk."""
+    import archive_policy
+
+    job = verifier_job(tmp_path, measured_source)
+    assert job.receipt is not None, job.log
+    receipt = stamped(job.receipt)
+
+    checkout = tmp_path / "archive"
+    (checkout / archive_policy.INDEX_PATH).parent.mkdir(parents=True)
+    handed = {}
+
+    def write(v, **kind):
+        handed.update(kind)
+        archive_policy.write_policy(checkout, v, login="tester", pull=PULL, head_sha=HEAD, run_id=RUN,
+                                    source=v["leanSource"], **kind)
+        return {"path": f"{archive_policy.DIR}/{HEAD}", "commit": "c" * 40, "added": True}
+
+    result = intake_v2.publish_verification(receipt, login="tester", pull=PULL, url="http://x", token="t",
+                                            workdir=tmp_path / "publish", head_sha=HEAD, run_id=RUN,
+                                            origin=origin_for(receipt), archive_write=write, log=lambda s: None)
+    assert result["published"]
+
+    entry = next(p for p in archive_policy.read_index(checkout)["policies"] if p["policy_id"] == HEAD)
+    assert entry["readout"] == "semiclassical", "the archive records the readout that was actually published"
+    assert archive_policy.entry_kind(entry)["readout"] == "semiclassical"
+    assert entry["boards"] == ["pp", "full"], "a first copy of the policy is its own primitive, on both its boards"
+    # The other two axes, as this flow really supplies them. `design` is None because this document names no
+    # full-run selection; `primitive` is None because the primitive route never reaches the archive at all
+    # (ruling 3), and the refusal that guarantees it is pinned in test_primitive_gate.py.
+    assert handed == {"readout": "semiclassical", "primitive": None, "design": None}
+    assert "design" not in entry and "primitive" not in entry and "tKind" not in entry
+    assert not [k for k in archive_policy.BARE_PRICE_KEYS if k in entry], "never the number"
+
+
 # ---------------------------------------------------------------- the ARCHIVE-REUSE branch (assessment, not a fix)
 
 

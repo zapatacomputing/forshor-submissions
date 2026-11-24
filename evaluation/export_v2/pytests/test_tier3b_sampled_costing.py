@@ -162,10 +162,16 @@ def test_a_lane_refuses_the_other_lanes_contract(module, other):
 
 
 def test_a_sampled_price_carries_no_bare_T_field():
-    """XA's structure, on the estimate/bound axis: `tKind` plus exactly one of the two T fields. A consumer
-    cannot pick up a key named `T` and rank it as if a circuit had been bound."""
+    """XA's structure, on the estimate/bound axis: `tClaimKind` plus exactly one of the two T fields. A
+    consumer cannot pick up a key named `T` and rank it as if a circuit had been bound.
+
+    OWNER RULING 2026-11-24 (ruling 2): the CLAIM CLASS is `tClaimKind` and the per-site axis is `tKind`, which
+    is the name XA's production code, `mapping.standalone_price_of` and the published primitive block -- a union
+    discriminated on that key -- already use for it. Fails if `t_fields` emits the claim class under the short
+    name again."""
     fields = sampled_fallback.t_fields("sampledEstimate", "expectedAdaptive", "94983648143")
-    assert fields["tKind"] == "sampledEstimate" and fields["tSiteKind"] == "expectedAdaptive"
+    assert fields["tClaimKind"] == "sampledEstimate" and fields["tKind"] == "expectedAdaptive"
+    assert "tSiteKind" not in fields, "the per-site axis carries XA's own name, not XL's"
     assert fields["tSampledEstimateUpper"] == "94983648143" and fields["tCircuitBound"] is None
     assert fields["estimate"] is True and fields["circuit_bound"] is False
     assert "T" not in fields and "rankedT" not in fields
@@ -175,20 +181,27 @@ def test_the_two_kinds_of_number_are_structurally_uncollapsible():
     bound = sampled_fallback.t_fields("circuitBound", "deterministic", "7")
     assert bound["tCircuitBound"] == "7" and bound["tSampledEstimateUpper"] is None
     assert bound["estimate"] is False and bound["circuit_bound"] is True
-    with pytest.raises(ValueError, match="unknown T kind"):
+    with pytest.raises(ValueError, match="unknown T claim kind"):
         sampled_fallback.t_fields("bound", "deterministic", "7")
     with pytest.raises(ValueError, match="unknown per-site T kind"):
         sampled_fallback.t_fields("circuitBound", "worstCase", "7")
 
 
 @pytest.mark.parametrize("payload,message", [
-    ({"tKind": "sampledEstimate", "tSiteKind": "expectedAdaptive", "T": 7}, "bare 'T'"),
-    ({"tKind": "sampledEstimate", "tSiteKind": "expectedAdaptive", "tSampledEstimateUpper": "7",
+    ({"tClaimKind": "sampledEstimate", "tKind": "expectedAdaptive", "T": 7}, "bare 'T'"),
+    ({"tClaimKind": "sampledEstimate", "tKind": "expectedAdaptive", "tSampledEstimateUpper": "7",
       "tCircuitBound": "7", "estimate": True, "circuit_bound": False}, "requires exactly"),
-    ({"tKind": "sampledEstimate", "tSiteKind": "expectedAdaptive", "tSampledEstimateUpper": None,
+    ({"tClaimKind": "sampledEstimate", "tKind": "expectedAdaptive", "tSampledEstimateUpper": None,
       "tCircuitBound": None, "estimate": True, "circuit_bound": False}, "requires exactly"),
-    ({"tSampledEstimateUpper": "7"}, "must declare tKind"),
-    ({"tKind": "sampledEstimate", "tSiteKind": "expectedAdaptive", "tSampledEstimateUpper": "7",
+    ({"tSampledEstimateUpper": "7"}, "must declare tClaimKind"),
+    # The per-site axis is checked under its own name: a payload that declares only the claim class is refused
+    # for the axis it is MISSING, not accepted because the short key happens to be absent.
+    ({"tClaimKind": "sampledEstimate", "tSampledEstimateUpper": "7", "tCircuitBound": None,
+      "estimate": True, "circuit_bound": False}, "must declare tKind"),
+    # And XL's old name is no longer the per-site axis: a payload carrying it is missing `tKind`.
+    ({"tClaimKind": "sampledEstimate", "tSiteKind": "expectedAdaptive", "tSampledEstimateUpper": "7",
+      "tCircuitBound": None, "estimate": True, "circuit_bound": False}, "must declare tKind"),
+    ({"tClaimKind": "sampledEstimate", "tKind": "expectedAdaptive", "tSampledEstimateUpper": "7",
       "tCircuitBound": None, "estimate": False, "circuit_bound": True}, "contradict"),
 ])
 def test_a_collapsed_or_contradictory_T_claim_is_refused(payload, message):
@@ -200,7 +213,7 @@ def test_a_collapsed_or_contradictory_T_claim_is_refused(payload, message):
 def test_both_lanes_report_an_estimate_of_an_expectation_and_say_why_no_bound_exists(lane):
     receipt = price_step4() if lane == "step4" else price_controlled()
     interval = receipt["interval"]
-    assert interval["tKind"] == "sampledEstimate" and interval["tSiteKind"] == "expectedAdaptive"
+    assert interval["tClaimKind"] == "sampledEstimate" and interval["tKind"] == "expectedAdaptive"
     assert interval["tCircuitBound"] is None and int(interval["tSampledEstimateUpper"]) > 0
     assert interval["estimate"] is True and interval["circuit_bound"] is False
     assert "no complete cold word bank fits" in interval["no_bound_basis"] \
@@ -215,7 +228,7 @@ def test_every_controlled_per_step_block_declares_its_own_kind_too():
     total = sum(int(b["tSampledEstimateUpper"]) for b in receipt["steps"].values())
     assert total == int(receipt["interval"]["tSampledEstimateUpper"])
     for block in receipt["steps"].values():
-        assert block["tKind"] == "sampledEstimate" and "T" not in block
+        assert block["tClaimKind"] == "sampledEstimate" and "T" not in block
 
 
 # --------------------------------------------------------------------------- rule 1: a range excess is out of contract

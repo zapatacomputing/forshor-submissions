@@ -10,10 +10,11 @@ the ranked upper endpoint of a contract-fixed stratified sample, with every site
 half-diamond allowance by contract.
 
 IT IS AN ESTIMATE, NOT A BOUND, and the receipt cannot say otherwise: `sampled_fallback.t_fields` emits
-`tKind` plus exactly one of `tSampledEstimateUpper` / `tCircuitBound` and no bare `T`, so a consumer cannot
-pick the number up and rank it as a bound. The per-site T is itself an UNCONDITIONAL EXPECTATION (B3 is
-repeat-until-success), which `tSiteKind` carries separately -- lane XA's axis, orthogonal to this one. A
-sampled Step 4 price is therefore an estimate OF AN EXPECTATION, twice removed from a worst case.
+`tClaimKind` plus exactly one of `tSampledEstimateUpper` / `tCircuitBound` and no bare `T`, so a consumer
+cannot pick the number up and rank it as a bound. The per-site T is itself an UNCONDITIONAL EXPECTATION (B3 is
+repeat-until-success), which `tKind` carries separately -- lane XA's axis, under XA's own name, orthogonal to
+this one (owner ruling 2026-11-24). A sampled Step 4 price is therefore an estimate OF AN EXPECTATION, twice
+removed from a worst case.
 
 The sampling machinery is `sampled_fallback`'s, unchanged. That is deliberate and it is also what the research
 lane does: `staging_retained_step4_sampled.py` calls `price_step2_budgeted` directly with the Step 4 contract,

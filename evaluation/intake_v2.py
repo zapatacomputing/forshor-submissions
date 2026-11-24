@@ -52,7 +52,7 @@ from policy_options import check_coherent_export, check_no_full_run_export  # no
 REPO = "zapatacomputing/forshor-submissions"
 MAX_FORSHOR_K = 8           # a submission's bands take 2 <= k <= 8
 MAX_LEAN_BYTES = 1_000_000  # the size limit of the submitted Lean file
-MAX_POLICY_BANDS = 256     # keep in sync with forshor-site's shared results-v2 contract
+MAX_POLICY_BANDS = 256     # the publisher's validators reject a policy with more bands, rather than truncating it, so this limit is shared and must not be raised alone
 
 #: The mirror stages that are a RESOURCE STOP, not a verdict: they raise `Incomplete` (exit 2 with a stage and the
 #: not-a-verdict sentence), never `Refused`, and never reach `write_receipt`. Keep in sync with the stages
@@ -696,7 +696,7 @@ def archive_policy_rules() -> Dict[str, str]:
 
 def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, token: str, workdir: Path, head_sha: Optional[str] = None, run_id: Optional[str] = None,
                          organizer_baseline: Optional[str] = None, archive_commit: Optional[str] = None, archive_view: Optional[Callable[[], Any]] = None,
-                         archive_write: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None, qualified_in_run: bool = False,
+                         archive_write: Optional[Callable[..., Dict[str, Any]]] = None, qualified_in_run: bool = False,
                          origin: Optional[Any] = None,
                          log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """Price and publish a verification (`verify_submission`'s output, possibly produced by another job). No Lean runs here and nothing in `v` is trusted: the policy's digest, the
@@ -706,7 +706,11 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     `origin` (an `export_v2.receipt_origin.ReceiptOrigin`) is how a receipt this process did NOT produce establishes a
     trusted origin: the publisher re-derives the verification identity from its own checkout and re-fetches the
     artifact the receipt's `ciVerification` stamp names. Without one, the receipt route refuses a qualified readout
-    exactly as before."""
+    exactly as before.
+
+    `archive_write` is called with the verification AND the result kind this run established -- `readout`, `primitive`
+    and `design`, `archive_policy.KIND_DEFAULT`'s three axes. It is keyword-only for everything after the
+    verification, so an axis the archive gains later arrives here as a new keyword and not as a positional shift."""
     from export_v2 import engine, epoch, receipt_origin, request
     from export_v2.canon import policy_digest
     from export_v2.evidence import EvidenceStore
@@ -741,10 +745,14 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
                 f"attempt {trusted_origin['runAttempt']}, at this checkout's verification fingerprint")
     # RETAINED, and NOT lifted with the source gate (owner-authorised 2026-11-24). The standalone primitive route is
     # nonpublishing, which is what it has always promised: the recorded qualification receipts carry
-    # `localOnly: true` / `publishable: false`, and the site's `rowSchema` and `policyPanelSchema` are Zod
-    # strictObjects with no field for a primitive price or its kind -- so a primitive-bearing entry cannot be
-    # represented, let alone ranked. Both halves are guarded, because either alone would be enough to publish a
-    # standalone price as if it were the plain one: the receipt's qualification key AND the compiled selector.
+    # `localOnly: true` / `publishable: false`, and the published ROW's field set is closed and names no primitive
+    # price or its kind -- transcribed into this repository as `SITE_ROW_FIELDS` in
+    # `export_v2/pytests/test_design_price_plumbing.py`, where the publisher's validators are shown to REJECT an
+    # unrecognised row key rather than ignore it. So a primitive-bearing row cannot be represented, let alone ranked.
+    # (The PANEL half is not the blocking one -- lane XP's correction: an optional primitive block on a policy panel
+    # is contract-valid and validated. The route is nonpublishing because the qualifying harness never publishes.)
+    # Both halves are guarded, because either alone would be enough to publish a standalone price as if it were the
+    # plain one: the receipt's qualification key AND the compiled selector.
     #
     # Integration XQ: XG wrote this beside the blanket readout refusal it branched on; XH then replaced that refusal
     # with the trusted-origin establishment above. The two are independent -- readout origin vs primitive
@@ -869,7 +877,25 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
 
     archived = None
     if archive_write is not None:                               # the policy joins the archive first: the publisher wants its head among the accepted ids
-        archived = archive_write(v)
+        # OWNER RULING 2026-11-24 (ruling 1): the archive records WHICH RESULT was published, on every axis
+        # `archive_policy.KIND_DEFAULT` admits, and this call is where those values are. Until now it passed none of
+        # them, so a published MEASURED submission was archived as a LEGACY entry -- which `entry_kind` reads as the
+        # coherent readout. Three consequences, in the one record that is kept forever: the wrong readout was
+        # recorded; the design was not recorded at all (nothing else can record it -- the ledger row has no field for
+        # one, INTEGRATION-WAVE2.md "The row/design seam"); and `plan_readout_variant` compared the variant against
+        # the default it is not, so your own measured and coherent copies of one policy were a repeat rather than the
+        # variant pair lane WA built the planner for.
+        #
+        # The two values come from THIS function, already checked, rather than being re-derived from `v` at the CLI:
+        # `measured` is the compiled document's own schema and `bind_measured_readout` has re-derived its evidence,
+        # and `design` is what `compiled_full_run` converted the full-run selection to -- the same object `price()`
+        # hands the publisher, so the archive and the board cannot disagree about which result was priced.
+        #
+        # `primitive` is None, and that is RULING 3 rather than an omission: the standalone primitive route is
+        # nonpublishing and its refusal above fires before this line, so no primitive value exists HERE to pass. It is
+        # named explicitly so the axis is visibly considered and the published primitive-bearing case has one place to
+        # fill in; `archive_policy`'s module docstring states the ruling.
+        archived = archive_write(v, readout="semiclassical" if measured else "coherent", primitive=None, design=design)
         log(f"archived {archived['path']} on submission-results ({archived['commit'][:12]})" if archived["added"] else f"already archived: {archived['path']}")
         for repeat in archived.get("duplicates") or []:
             kind = "same_participant" if repeat["sameParticipant"] else "other_participant"   # a repeat the rules allow (archive_policy.DUPLICATE_RULES): identified here, published like any other
@@ -1006,7 +1032,11 @@ def _run_args(a, ap, verification_path):
     archive_view = (lambda: __import__("publish_v2")._archive_view(a.archive)) if a.archive else None
     archive_write = None
     if a.archive and a.publish_from is not None:
-        def archive_write(v):
+        def archive_write(v, *, readout="coherent", primitive=None, design=None):
+            # The result kind is the CALLER's: `publish_verification` is the only thing that has checked the compiled
+            # document, so it says which result is being archived and this closure only carries it through. The
+            # defaults are `archive_policy`'s own (`KIND_DEFAULT`), so a caller that names no axis still writes the
+            # legacy coherent entry byte for byte.
             import archive_policy as ap_
             if a.head_sha is None or a.run_id is None:
                 raise ap_.ArchiveRefused("archiving needs --head-sha and --run-id")
@@ -1017,7 +1047,7 @@ def _run_args(a, ap, verification_path):
             __import__("publish_v2").reject_retired(state, a.head_sha)
             published = set(state.get("submissionIds", []))   # the heads the publisher has actually published
             return ap_.archive_policy(a.archive, v, login=a.login, pull=a.pull, head_sha=a.head_sha, run_id=a.run_id, source=source, summary=summary, token=token_gh,
-                                      published_ids=published)
+                                      published_ids=published, readout=readout, primitive=primitive, design=design)
     try:
         if a.publish_from is not None:
             # The trusted workflow supplies the origin; the receipt never does. `trusted_origin` reads GH_TOKEN only

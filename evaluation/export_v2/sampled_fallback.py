@@ -129,30 +129,40 @@ def pricer_fingerprint() -> str:
 
 # ---------------------------------------------------------------- an estimate is not a bound
 
-#: What kind of number a sampled T is.  A CONTRACT-FIXED ESTIMATE is the upper endpoint of an interval drawn
-#: from a sample under the contract's assumptions; a CIRCUIT BOUND is a bound on a circuit that was actually
-#: bound, word for word.  They are never the same claim, and `t_fields` makes them structurally
+#: What kind of number a sampled T is: the CLAIM CLASS.  A CONTRACT-FIXED ESTIMATE is the upper endpoint of an
+#: interval drawn from a sample under the contract's assumptions; a CIRCUIT BOUND is a bound on a circuit that
+#: was actually bound, word for word.  They are never the same claim, and `t_fields` makes them structurally
 #: uncollapsible -- the same thing lane XA did for deterministic vs expected-adaptive T in
 #: `primitive_overlay.py:215-217`.
+#:
+#: THE KEY IS `tClaimKind`, NOT `tKind` (owner ruling 2026-11-24, ruling 2).  Two vocabularies had claimed one
+#: key: XA's per-site axis (deterministic / expectedAdaptive) and this claim class.  XA's keeps the short name
+#: because XA's is STRUCTURALLY ENFORCED and reaches production -- `primitive_overlay.project` emits no bare
+#: `T` and exactly one of `tDeterministic` / `tExpectedAdaptive`, `mapping.standalone_price_of` refuses a
+#: result that does not carry its kind, and the published primitive block is a union DISCRIMINATED on `tKind`
+#: with that same vocabulary.  This axis is a pass-through label: nothing below inspects a word bank, a turn
+#: count or a cap to decide it, and no caller anywhere passes `"circuitBound"`.  An unenforced label does not
+#: get the short name.  So the per-site axis below is `tKind` everywhere, and this one is `tClaimKind`.
 T_KINDS = ("sampledEstimate", "circuitBound")
 #: Orthogonal to the above, and carried alongside it: what the per-site T *is*.  XA's axis
-#: (`primitive_overlay.py:15-19`).  A repeat-until-success B3 site's T is an UNCONDITIONAL EXPECTATION, so a
-#: sampled estimate of a B3 phase is an estimate OF AN EXPECTATION -- twice removed from a worst case, and a
-#: consumer must be able to see both steps.
+#: (`primitive_overlay.py:15-19`), under XA's own name `tKind`.  A repeat-until-success B3 site's T is an
+#: UNCONDITIONAL EXPECTATION, so a sampled estimate of a B3 phase is an estimate OF AN EXPECTATION -- twice
+#: removed from a worst case, and a consumer must be able to see both steps.
 SITE_T_KINDS = ("deterministic", "expectedAdaptive")
 T_FIELD = {"sampledEstimate": "tSampledEstimateUpper", "circuitBound": "tCircuitBound"}
 
 
 def t_fields(kind: str, site_kind: str, value) -> Dict[str, Any]:
-    """`tKind` plus EXACTLY ONE of `tSampledEstimateUpper` / `tCircuitBound`, and never a bare `T`.
+    """`tClaimKind` plus EXACTLY ONE of `tSampledEstimateUpper` / `tCircuitBound`, and never a bare `T`.
+    The per-site axis rides beside it as `tKind`, which is XA's name for XA's axis.
 
     A consumer that wants the number has to read a field whose name says what the number is.  There is no
     key a careless reader can pick up and rank as if it were a bound."""
     if kind not in T_KINDS:
-        raise ValueError(f"unknown T kind {kind!r}: expected one of {list(T_KINDS)}")
+        raise ValueError(f"unknown T claim kind {kind!r}: expected one of {list(T_KINDS)}")
     if site_kind not in SITE_T_KINDS:
         raise ValueError(f"unknown per-site T kind {site_kind!r}: expected one of {list(SITE_T_KINDS)}")
-    return {"tKind": kind, "tSiteKind": site_kind, "estimate": kind == "sampledEstimate",
+    return {"tClaimKind": kind, "tKind": site_kind, "estimate": kind == "sampledEstimate",
             "circuit_bound": kind == "circuitBound",
             **{field: (value if field == T_FIELD[kind] else None) for field in T_FIELD.values()}}
 
@@ -162,17 +172,17 @@ def check_t_fields(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     for bare in ("T", "t", "ranked_upper_T", "rankedT"):
         if bare in payload:
             raise ValueError(f"a sampled price must not carry a bare {bare!r} field: say which kind of number it is")
-    kind = payload.get("tKind")
+    kind = payload.get("tClaimKind")
     if kind not in T_KINDS:
-        raise ValueError(f"a sampled price must declare tKind in {list(T_KINDS)}; got {kind!r}")
-    if payload.get("tSiteKind") not in SITE_T_KINDS:
-        raise ValueError(f"a sampled price must declare tSiteKind in {list(SITE_T_KINDS)}")
+        raise ValueError(f"a sampled price must declare tClaimKind in {list(T_KINDS)}; got {kind!r}")
+    if payload.get("tKind") not in SITE_T_KINDS:
+        raise ValueError(f"a sampled price must declare tKind in {list(SITE_T_KINDS)}")
     present = [f for f in T_FIELD.values() if payload.get(f) is not None]
     if present != [T_FIELD[kind]]:
-        raise ValueError(f"tKind {kind!r} requires exactly {T_FIELD[kind]!r} and no other T field; got {present}")
+        raise ValueError(f"tClaimKind {kind!r} requires exactly {T_FIELD[kind]!r} and no other T field; got {present}")
     if payload.get("estimate") is not (kind == "sampledEstimate") or \
             payload.get("circuit_bound") is not (kind == "circuitBound"):
-        raise ValueError(f"the estimate/circuit_bound labels contradict tKind {kind!r}")
+        raise ValueError(f"the estimate/circuit_bound labels contradict tClaimKind {kind!r}")
     return payload
 
 

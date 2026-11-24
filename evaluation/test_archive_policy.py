@@ -485,7 +485,7 @@ def ptp(source=SOURCE, **kw):
 
 
 def test_the_explicit_default_of_every_axis_is_the_omitted_default(tmp_path):
-    # Fails if write_policy writes `readout`, `boards`, `primitive`, `tSiteKind` or `design` for a submission that
+    # Fails if write_policy writes `readout`, `boards`, `primitive`, `tKind` or `design` for a submission that
     # asked for none of them: every row already on `submission-results` was written by this path (git blob 650b2416,
     # submission tree 9f99f79f, pinned above), and none of them may move.
     put(plain(tmp_path), readout="coherent", primitive=None, design=None)
@@ -510,16 +510,41 @@ def test_the_archive_names_exactly_the_primitives_the_overlay_prices_and_no_defa
 
 @pytest.mark.parametrize("primitive,kind", sorted(ap.PRIMITIVE_T_SITE_KIND.items()))
 def test_a_primitive_bearing_entry_names_the_primitive_and_what_kind_of_number_its_T_is(primitive, kind, tmp_path):
-    # Fails if write_policy drops the `primitive` / `tSiteKind` block, or records a number. adaptiveB3's T is an
+    # Fails if write_policy drops the `primitive` / `tKind` block, or records a number. adaptiveB3's T is an
     # UNCONDITIONAL EXPECTATION and catalyticB2's is deterministic; lane XA made the two uncollapsible in the price
     # (no bare T, tKind plus exactly one of tDeterministic/tExpectedAdaptive) and the archive is where the result is
     # kept forever, so a row that flattened it would lose the distinction for good.
     checkout = plain(tmp_path)
     assert put(checkout, primitive=primitive) is True
     entry = entry_of(checkout, HEAD)
-    assert entry["primitive"] == primitive and entry["tSiteKind"] == kind
+    assert entry["primitive"] == primitive and entry["tKind"] == kind
     assert entry["boards"] == ["pp", "full"], "a first copy of the policy is its own primitive, on both its boards"
     assert not [k for k in ap.BARE_PRICE_KEYS if k in entry], "the archive records which result, never the number"
+
+
+@pytest.mark.parametrize("primitive,kind", sorted(ap.PRIMITIVE_T_SITE_KIND.items()))
+def test_the_per_site_axis_is_recorded_as_tKind_and_the_claim_class_key_stays_reserved(primitive, kind, tmp_path):
+    """OWNER RULING 2026-11-24 (ruling 2). Two vocabularies had claimed one key: XA's per-site axis
+    (deterministic / expectedAdaptive) and lane XL's claim class (circuitBound / sampledEstimate). XA keeps
+    `tKind`, because XA's axis is structurally enforced and reaches production -- no bare `T`, exactly one of
+    `tDeterministic` / `tExpectedAdaptive`, re-checked in `mapping.standalone_price_of` and again by the
+    published contract, whose primitive block is a union DISCRIMINATED on `tKind` with that same vocabulary.
+    XL's claim class is renamed `tClaimKind` and is still unwritten here, because Tier 3b is not scoped for
+    this release.
+
+    Lane XO recorded the per-site axis under XL's name `tSiteKind` and left `tKind` unwritten and reserved so
+    that this ruling would be one line. Fails if `write_policy` writes the axis under XL's name again, or if
+    the archive starts claiming a class it cannot yet substantiate."""
+    checkout = plain(tmp_path)
+    put(checkout, primitive=primitive)
+    entry = entry_of(checkout, HEAD)
+    assert entry["tKind"] == kind, "the per-site axis carries XA's own name"
+    assert "tSiteKind" not in entry, "XL's name for XA's axis is gone from the archive"
+    assert "tClaimKind" not in entry, "no entry claims a class until Tier 3b lands and can substantiate one"
+    # And the refusal moved with the key: an entry naming the axis the old way is a contradicted T kind, not
+    # an accepted one, so a half-applied rename cannot pass check_entry.
+    with pytest.raises(ap.ArchiveRefused, match="never the same claim"):
+        ap.check_entry({"policy_id": HEAD, "primitive": primitive, "tSiteKind": kind})
 
 
 @pytest.mark.parametrize("first,second", [(None, B2), (B2, None), (B2, B3), (B3, B2)])
@@ -637,7 +662,7 @@ def test_another_participants_primitive_is_its_own_result_and_only_identified(re
     assert got["added"] is True
     assert [(d["policyId"], d["sameParticipant"]) for d in got["duplicates"]] == [(HEAD, False)]
     entry = entry_of(clone, HEAD2)
-    assert entry["boards"] == ["pp", "full"] and entry["primitive"] == B3 and entry["tSiteKind"] == "expectedAdaptive"
+    assert entry["boards"] == ["pp", "full"] and entry["primitive"] == B3 and entry["tKind"] == "expectedAdaptive"
 
 
 def test_an_entry_may_never_carry_a_bare_price_or_a_contradicted_T_kind():
@@ -646,19 +671,20 @@ def test_an_entry_may_never_carry_a_bare_price_or_a_contradicted_T_kind():
     # with the other primitive's kind of T.
     for bare in ap.BARE_PRICE_KEYS:
         with pytest.raises(ap.ArchiveRefused, match="never the number"):
-            ap.check_entry({"policy_id": HEAD, "primitive": B3, "tSiteKind": "expectedAdaptive", bare: 143366613})
+            ap.check_entry({"policy_id": HEAD, "primitive": B3, "tKind": "expectedAdaptive", bare: 143366613})
     for primitive, wrong in ((B3, "deterministic"), (B2, "expectedAdaptive"), (B2, None)):
         with pytest.raises(ap.ArchiveRefused, match="never the same claim"):
-            ap.check_entry({"policy_id": HEAD, "primitive": primitive, "tSiteKind": wrong})
+            ap.check_entry({"policy_id": HEAD, "primitive": primitive, "tKind": wrong})
     assert ap.check_entry({"policy_id": HEAD})["policy_id"] == HEAD, "a legacy entry passes unchanged"
 
 
 # ---- the QFT design: the archive is the only place that can say WHICH design produced a row
 
 def test_a_design_bearing_entry_names_the_design_because_nothing_else_records_it(tmp_path):
-    # Fails if write_policy drops the `design` key. `mapping.row_of` copies no design key and the site's rowSchema is a
-    # strictObject with no field for one (lane XF), while `mapping.ranked_price_of` now ranks the projection's own T and
-    # qubits -- so without this key a design-bearing result is recorded nowhere at all.
+    # Fails if write_policy drops the `design` key. `mapping.row_of` copies no design key and the published row's
+    # field set is closed with no field for one -- an unrecognised key is rejected, not ignored (lane XF;
+    # `SITE_ROW_FIELDS` in export_v2/pytests/test_design_price_plumbing.py) -- while `mapping.ranked_price_of` now
+    # ranks the projection's own T and qubits, so without this key a design-bearing result is recorded nowhere at all.
     checkout = plain(tmp_path)
     assert put(checkout, design={"work": CATALYTIC["data"], "data": BANDED["data"]}) is True
     entry = entry_of(checkout, HEAD)
