@@ -103,10 +103,12 @@ class ResourceStop(RuntimeError):
 # ---------------------------------------------------------------- the contract
 
 
-def load_contract(path=CONTRACT) -> Dict[str, Any]:
+def load_contract(path=CONTRACT, schema: str = SCHEMA) -> Dict[str, Any]:
+    """`schema` is a parameter so the Step 4 adaptive lane can validate its own contract with these same
+    field rules (research lane `staging_step2_sampled.py`, commit `a12e431`, made the same change)."""
     c = json.loads(Path(path).read_text())
     try:
-        ok = (c["schema"] == SCHEMA and len(bytes.fromhex(c["salt_hex"])) == 32 and int(c["sample_total"]) >= 2
+        ok = (c["schema"] == schema and len(bytes.fromhex(c["salt_hex"])) == 32 and int(c["sample_total"]) >= 2
               and int(c["round_size"]) >= 1 and float(c["budget_seconds"]) > 0 and c["conf"] == 0.95
               and Fraction(c["range_T"]) > 0 and Fraction(c["max_halfwidth_fraction"]) > 0)
     except (KeyError, ValueError, TypeError):
@@ -123,6 +125,55 @@ def contract_digest(contract: Mapping[str, Any]) -> str:
 def pricer_fingerprint() -> str:
     """Which code priced it: the digest of this module's own source."""
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+
+
+# ---------------------------------------------------------------- an estimate is not a bound
+
+#: What kind of number a sampled T is.  A CONTRACT-FIXED ESTIMATE is the upper endpoint of an interval drawn
+#: from a sample under the contract's assumptions; a CIRCUIT BOUND is a bound on a circuit that was actually
+#: bound, word for word.  They are never the same claim, and `t_fields` makes them structurally
+#: uncollapsible -- the same thing lane XA did for deterministic vs expected-adaptive T in
+#: `primitive_overlay.py:215-217`.
+T_KINDS = ("sampledEstimate", "circuitBound")
+#: Orthogonal to the above, and carried alongside it: what the per-site T *is*.  XA's axis
+#: (`primitive_overlay.py:15-19`).  A repeat-until-success B3 site's T is an UNCONDITIONAL EXPECTATION, so a
+#: sampled estimate of a B3 phase is an estimate OF AN EXPECTATION -- twice removed from a worst case, and a
+#: consumer must be able to see both steps.
+SITE_T_KINDS = ("deterministic", "expectedAdaptive")
+T_FIELD = {"sampledEstimate": "tSampledEstimateUpper", "circuitBound": "tCircuitBound"}
+
+
+def t_fields(kind: str, site_kind: str, value) -> Dict[str, Any]:
+    """`tKind` plus EXACTLY ONE of `tSampledEstimateUpper` / `tCircuitBound`, and never a bare `T`.
+
+    A consumer that wants the number has to read a field whose name says what the number is.  There is no
+    key a careless reader can pick up and rank as if it were a bound."""
+    if kind not in T_KINDS:
+        raise ValueError(f"unknown T kind {kind!r}: expected one of {list(T_KINDS)}")
+    if site_kind not in SITE_T_KINDS:
+        raise ValueError(f"unknown per-site T kind {site_kind!r}: expected one of {list(SITE_T_KINDS)}")
+    return {"tKind": kind, "tSiteKind": site_kind, "estimate": kind == "sampledEstimate",
+            "circuit_bound": kind == "circuitBound",
+            **{field: (value if field == T_FIELD[kind] else None) for field in T_FIELD.values()}}
+
+
+def check_t_fields(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Refuse a payload that carries a bare `T`, both kinds of number at once, or neither."""
+    for bare in ("T", "t", "ranked_upper_T", "rankedT"):
+        if bare in payload:
+            raise ValueError(f"a sampled price must not carry a bare {bare!r} field: say which kind of number it is")
+    kind = payload.get("tKind")
+    if kind not in T_KINDS:
+        raise ValueError(f"a sampled price must declare tKind in {list(T_KINDS)}; got {kind!r}")
+    if payload.get("tSiteKind") not in SITE_T_KINDS:
+        raise ValueError(f"a sampled price must declare tSiteKind in {list(SITE_T_KINDS)}")
+    present = [f for f in T_FIELD.values() if payload.get(f) is not None]
+    if present != [T_FIELD[kind]]:
+        raise ValueError(f"tKind {kind!r} requires exactly {T_FIELD[kind]!r} and no other T field; got {present}")
+    if payload.get("estimate") is not (kind == "sampledEstimate") or \
+            payload.get("circuit_bound") is not (kind == "circuitBound"):
+        raise ValueError(f"the estimate/circuit_bound labels contradict tKind {kind!r}")
+    return payload
 
 
 # ---------------------------------------------------------------- stratified estimation
