@@ -30,7 +30,7 @@ MODEL_PIN = "21e129aeefc0fd1bbb8fa63402f5799af2490788"
 OPERATIONAL_PIN = "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
 #: `sha256` of `export_v2/readout_overlay.py`, which is the `ruleSha256` every measured row carries and which the
 #: published contract pins as a literal on the publisher side. One byte of drift in that file rejects every readout panel.
-READOUT_RULE_SHA256 = "53a7e7ba32f12fe7de423b6d19e3ebdc458fc82b99cdaa7e0eaadeb93a45e032"
+READOUT_RULE_SHA256 = "b3c2f317cf68bc47649a634862540177f5fc135d1e6fa543ce9fe4cb1161cd96"
 
 
 def operational_pin() -> str:

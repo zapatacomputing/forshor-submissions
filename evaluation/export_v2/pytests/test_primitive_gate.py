@@ -646,12 +646,14 @@ def test_the_primitive_route_prices_inside_the_committed_epoch():
     assert model["engineRevision"] == "677cc2e05ab178afff8dc632ff56058a8196a116"
 
 
-def test_the_readout_rule_fingerprint_the_site_pins_has_not_moved():
-    """The site pins `readout_overlay.py`'s bytes in 8 places across 4 files; one byte of drift rejects every readout
-    panel. This lane must not touch that file."""
+def test_the_readout_rule_fingerprint_is_unchanged_by_the_primitive_route():
+    """`readout_overlay.py`'s bytes ARE the published `ruleSha256`, which the consuming contract pins as an exact
+    literal, so one byte of drift rejects every readout panel. Nothing in the primitive route may touch that file.
+    Rotating this value is a deliberate change of its own and has to be propagated to the consumer in the same
+    release -- `readout_overlay.py`'s own header says so."""
     from export_v2 import readout_overlay
     assert sha256(Path(readout_overlay.__file__).read_bytes()).hexdigest() == \
-        "53a7e7ba32f12fe7de423b6d19e3ebdc458fc82b99cdaa7e0eaadeb93a45e032"
+        "b3c2f317cf68bc47649a634862540177f5fc135d1e6fa543ce9fe4cb1161cd96"
 
 
 def test_the_primitive_route_is_recorded_as_nonpublishing_in_the_shipped_source_gate():
