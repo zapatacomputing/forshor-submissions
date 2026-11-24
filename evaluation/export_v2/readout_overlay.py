@@ -18,7 +18,14 @@ RULE = "exact-reference-readout-v1"
 # the one `intake_v2._forshor_build` requires `git rev-parse HEAD` to equal before it will qualify a readout. These two
 # must never diverge -- `pytests/test_operational_pin.py::test_the_readout_verifier_pin_is_the_operational_pin` is the
 # guard. The pin is a literal here on purpose: `rule_fingerprint()` hashes this file, so the published `ruleSha256`
-# covers which verifier the evidence names, and the site contract pins both values (`src/contracts/results-v2.ts`).
+# covers which verifier the evidence names.
+#
+# EDITING THIS FILE ROTATES THE PUBLISHED PIN -- a comment counts, including this one. `rule_fingerprint()` is the
+# sha256 of these bytes, every readout panel carries that digest as `ruleSha256`, and the consuming contract pins the
+# exact value as a literal constant rather than recomputing it. So a one-byte edit here rejects every readout-bearing
+# panel until the consumer is updated in the SAME change: this is a two-repository change, never a drive-by.
+# `pytests/test_operational_pin.py` transcribes the current digest independently and is the guard that fires the
+# moment the two drift -- if it is red, the published pin is stale, not wrong.
 VERIFIER_PIN = "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
 MEASURED_SCHEMA = "forshor.policy-submission-semiclassical/v1"
 SCHEDULE = {
