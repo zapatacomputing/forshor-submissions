@@ -254,7 +254,7 @@ def converter(monkeypatch):
 
 
 def with_profile(v, profile):
-    """The receipt as it is for a full-run submission: the profile is semiclassical by force (PolicyMain.lean:444-447),
+    """The receipt as it is for a full-run submission: the profile is semiclassical by force (`PolicyMain.lean`),
     so it carries the measured schema and its readout evidence re-binds over the document that names the selection."""
     printed = {**deepcopy(v["printed"]), intake_v2.FULL_RUN_KEY: {"schema": SELECTION_SCHEMA, "profile": profile}}
     evidence_ = overlay.bind_compiled_readout(engine.load().tables.Policy.from_json(v["policy"]), printed,

@@ -6,7 +6,7 @@ obstacles stood between a compiled design and a price on a board, and this modul
 OBSTACLE 1 -- THE FOUR-DELTA CONFLICT. `pricing.price_views` refuses a design at any delta but 1e-2, and
 `request._build_request` prices ALL FOUR deltas of `mapping.DELTA_KEYS`, so a publish request carrying a design
 raised partway through its own pricing loop and no request was ever completed. The release rule is that only
-delta = 1e-2 is in scope for the design surface (`QFT-SURFACE-MAPPING.md` section 1), and reading the code
+delta = 1e-2 is in scope for the design surface, and reading the code
 confirms the other three deltas are legitimately DESIGN-FREE PANELS OF THE SAME POLICY, not an error: they are
 the same `price_views` call on the same policy at a different precision, they carry no `qft` block, and every
 panel ever published is one of them. So the request now scopes the design to the 1e-2 panel

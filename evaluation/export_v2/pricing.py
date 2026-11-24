@@ -66,7 +66,7 @@ def price_views(policy: Any, title: str, delta_key: str, boards: Iterable[str], 
     P = policy.with_widths("exact")
     boards = list(boards)
     if design is not None:
-        # The QFT design surface is qualified at one precision only (QFT-SURFACE-MAPPING.md section 1). This stays a
+        # The QFT design surface is qualified at one precision only. This stays a
         # PRECONDITION on the caller, not a silent drop: scoping the design to the panel it belongs to is
         # `request._build_request`'s job (it asks for `design=` at `DESIGN_DELTA` and asks for the other three deltas
         # with no `design` keyword at all, which is the call 792464f made), and a design arriving here at another

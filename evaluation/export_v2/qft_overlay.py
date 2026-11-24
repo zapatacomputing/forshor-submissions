@@ -130,7 +130,7 @@ BACKENDS = ("ross_selinger", "catalytic")
 TARGETS = ("exact", "approximate")
 
 #: Selector fields of the same compiled record that this overlay must not price (see SCOPE above).
-#: All four phase-product steps of `Design.json:84`, which is the set `full_run_design.PHASE_STEPS` already
+#: All four phase-product steps the research record names, which is the set `full_run_design.PHASE_STEPS` already
 #: refuses on the explicit path. `step1` and `step5` were absent here until lane XL: they were still
 #: fail-closed, because the unknown-key check catches them, but the refusal named them as unrecognised
 #: families rather than as phase-product scopes needing their own qualification. They now have a qualified

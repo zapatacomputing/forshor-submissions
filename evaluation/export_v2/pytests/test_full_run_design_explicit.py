@@ -5,31 +5,28 @@ path, which accepts an arbitrary per-family design and so unlocks the combinatio
 
 Every test names the production change in `export_v2/full_run_design.py` that would fail it.
 
-THE WIRE SHAPE, and the evidence for it. Nothing here is invented; each key is transcribed from the
-Lean that emits it.
+THE WIRE SHAPE, and the evidence for it. Nothing here is invented; each key is a wire key transcribed from
+the serializer that emits it, so renaming one silently stops matching a compiled selection.
 
 * the envelope is the one already in the recorded compiled exports -- `submitted_full_run` carrying
-  `{"schema": "forshor.full-run-selection/v1", ...}` (`test_full_run_design.py` header, citing
-  `readiness/pre-push/overnight-native-compiler-matrix/<profile>/checked-export.json`);
-* the design BODY mirrors `ForShorGate5.Design.json`
-  (`postprocess/synthesis/qualification/Gate5Design.lean:83-91` in the research repo), the only
-  serializer that exists for this record: `{"modmul": <label>, "schema": "forshor.design-local/v1",
-  "qft": {<family>: <QftChoice.json>}, "phase_product": {<step>: {"backend": <label>}}}`, with
-  `phase_product` emitted only when non-empty and only `some` families present under `qft`;
-* a family value is exactly `QftChoice.json` (`Gate5Design.lean:39-44`): `{"backend": ..., "target":
+  `{"schema": "forshor.full-run-selection/v1", ...}` (see the `test_full_run_design.py` header);
+* the design BODY mirrors the research record's only serializer:
+  `{"modmul": <label>, "schema": "forshor.design-local/v1", "qft": {<family>: <choice>},
+  "phase_product": {<step>: {"backend": <label>}}}`, with `phase_product` emitted only when non-empty and
+  only `some` families present under `qft`;
+* a family value is exactly that record's per-family choice: `{"backend": ..., "target":
   "exact"}` or `{"backend": ..., "target": "approximate", "max_error": "<units>e-<scale>"}`. That is
   already `qft_overlay.parse_design`'s contract, so this path does not restate it -- it DELEGATES value
   validation to the overlay, keeping one validator in the repo and not two;
-* the families and the per-family `rotation_backend`/`step*` fields are the ones
-  `QFT-SURFACE-MAPPING.md` section 4.2 proposes for `Shor.FullRunDesign`, which it states "mirrors
-  `ForShorGate5.Design`";
-* `readout` is NOT part of the body: `Design.json` takes it as a PARAMETER (`:83`) because the research
-  document has no separate key, while production carries `submitted_readout` as its own top-level key
-  beside `submitted_full_run`, and section 4.2's `FullRunDesign` has no readout field at all.
+* the families and the per-family `rotation_backend`/`step*` fields are the ones the production-side design
+  record proposes, which it states mirrors the research record;
+* `readout` is NOT part of the body: the research record takes it as a PARAMETER rather than a field,
+  because that document has no separate key, while production carries `submitted_readout` as its own
+  top-level key beside `submitted_full_run`, and the production-side record has no readout field at all.
 
-WHAT LEAN MUST STILL EMIT. Section 4.2's `FullRunDesign.label?` returns `Option String` and `PolicyMain`
-refuses `none`, so today the verifier emits a profile LABEL and never a design body. This path is
-therefore qualified but not yet reachable from production; see the lane report's Port A dependency.
+WHAT LEAN MUST STILL EMIT. The production-side design record's optional label is refused when absent, so
+today the verifier emits a profile LABEL and never a design body. This path is therefore qualified but not
+yet reachable from production; see the lane report's Port A dependency.
 """
 import json
 import sys
@@ -50,7 +47,7 @@ def band(max_error="1e-6", backend="ross_selinger"):
 
 
 def explicit(qft, **body):
-    """A compiled selection carrying an explicit design body, in `Design.json`'s shape."""
+    """A compiled selection carrying an explicit design body, in the research record's shape."""
     design = {"modmul": "reference", "schema": "forshor.design-local/v1", "qft": qft}
     design.update(body)
     return {"schema": "forshor.full-run-selection/v1", "design": design}
@@ -61,8 +58,8 @@ def explicit(qft, **body):
 # --------------------------------------------------------------------------------------------------
 
 def test_the_module_names_the_keys_and_labels_the_lean_serializer_emits():
-    """Fails if the explicit path drifts from Gate5Design.lean. `modmul`, the three multiplier labels and
-    the `phase_product` step names are transcribed from `Design.json:83-91` and `Multiplier.label:11-14`;
+    """Fails if the explicit path drifts from the research record's serializer. `modmul`, the three
+    multiplier labels and the `phase_product` step names are all transcribed wire keys, not local choices;
     `forshor.design-local/v1` is the schema string at `:86`."""
     assert full_run_design.DESIGN_KEY == "design"
     assert full_run_design.PROFILE_KEY == "profile"
@@ -76,9 +73,9 @@ def test_the_module_names_the_keys_and_labels_the_lean_serializer_emits():
     assert full_run_design.ROTATION_FIELD == "rotation_backend"
 
 
-def test_a_family_value_is_exactly_the_two_forms_QftChoice_json_emits():
-    """Fails if the explicit path accepts a family shape `QftChoice.json` cannot produce, or rejects one it
-    can. `Gate5Design.lean:39-44`: exact carries no `max_error`, approximate carries `<units>e-<scale>`."""
+def test_a_family_value_is_exactly_the_two_forms_the_research_record_emits():
+    """Fails if the explicit path accepts a family shape the research record's per-family choice cannot
+    produce, or rejects one it can: exact carries no `max_error`, approximate carries `<units>e-<scale>`."""
     assert full_run_design.design_of(explicit({"data": band()})) == {"data": band()}
     assert full_run_design.design_of(explicit({"data": band(), "work": EXACT})) == {"data": band(), "work": EXACT}
     with pytest.raises(ValueError, match="'exact' takes no 'max_error'"):
@@ -107,8 +104,8 @@ ARBITRARY = {
 @pytest.mark.parametrize("qft,want", list(ARBITRARY.values()), ids=list(ARBITRARY))
 def test_an_arbitrary_per_family_combination_converts(qft, want):
     """THE TIER 3a UNLOCK. Fails if full_run_design.design_of still only resolves profile labels: these
-    combinations have no label in the closed enum (QFT-SURFACE-MAPPING.md section 2.3) and so could not be
-    converted at all before this path existed."""
+    combinations have no label in the closed enum and so could not be converted at all before this path
+    existed."""
     assert full_run_design.design_of(explicit(qft)) == want
 
 
@@ -125,7 +122,10 @@ def test_a_converted_explicit_design_is_a_fresh_mapping_the_caller_cannot_poison
 
 def test_the_absent_and_empty_qft_object_are_both_no_design_at_all():
     """Fails if an explicit design naming no family converts to `{}` instead of None.
-    QFT-SURFACE-MAPPING.md section 1.2 / design_matrix.py:157: "the empty selection is not a design"."""
+
+    THE EMPTY SELECTION IS NOT A DESIGN. An absent selection, an explicit `reference`, and a design body
+    that names no family are all the same thing: the engine's untouched default, `design = None` -- never
+    an all-defaults record. This assertion is the public, executable statement of that rule."""
     assert full_run_design.design_of(explicit({})) is None
     assert full_run_design.design_of({"schema": "forshor.full-run-selection/v1",
                                       "design": {"modmul": "reference"}}) is None
@@ -254,7 +254,7 @@ def test_the_refusals_are_the_complete_documented_list():
 
 def test_the_eight_profile_labels_all_still_resolve_and_the_seven_refuse_by_name():
     """Fails if widening the converter perturbs an already-qualified fixture. These 8 labels are the whole
-    accepted set today (QFT-SURFACE-MAPPING.md section 4.2's `FullRunDesign.qualified`); `reference` is the
+    accepted set today -- the qualified set of the production-side design record; `reference` is the
     only one that converts, and the other seven must refuse BY NAME -- four on the feature beyond the QFT
     families, three on the multiplier topology."""
     profile = lambda p: {"schema": "forshor.full-run-selection/v1", "profile": p}  # noqa: E731

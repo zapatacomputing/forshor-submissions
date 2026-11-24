@@ -9,7 +9,7 @@ BOARDS = ("full", "pp", "ptp")
 DELTA_KEYS = ("1e-2", "3e-4", "1e-4", "1e-6")
 DELTA_VALUES = {"1e-2": 0.01, "3e-4": 3e-4, "1e-4": 1e-4, "1e-6": 1e-6}
 
-#: The one delta the full-run QFT design surface is qualified at (`QFT-SURFACE-MAPPING.md` section 1). A publish request
+#: The one delta the full-run QFT design surface is qualified at. A publish request
 #: prices all four of `DELTA_KEYS`; the design applies to THIS panel and the other three are priced as the design-free
 #: panels of the same policy that they are -- the same policy at a different precision, which is what every published
 #: panel is -- rather than refusing the whole request. `pricing.price_views` and `request._build_request` share this name

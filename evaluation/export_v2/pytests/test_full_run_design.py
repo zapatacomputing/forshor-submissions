@@ -26,12 +26,11 @@ from export_v2 import canon, full_run_design, mapping, pricing, request  # noqa:
 
 DATA = Path(__file__).parent / "data"
 
-# The shape the verifier's compiled document actually uses, transcribed from the recorded fixtures:
-# readiness/pre-push/overnight-native-compiler-matrix/<profile>/checked-export.json carries, at the top level,
+# The shape the verifier's compiled document actually uses, transcribed from the recorded fixtures: the
+# recorded compiled export for each native profile carries, at the top level,
 #   "submitted_full_run": {"schema": "forshor.full-run-selection/v1", "profile": "<label>"}
-# and readiness/pre-push/overnight-native-legacy-replay.json's sibling export for `explicit-reference` carries no
-# such key at all. The same pair is asserted by readiness/pre-push/audit_native_fullrun.py:131 and
-# readiness/pre-push/replay_native_quotient_step2.py:96.
+# and the sibling export for `explicit-reference` carries no such key at all. The audit and replay scripts
+# that produced those records assert the same pair.
 RECORDED = {
     "quotient-exact", "quotient-catalytic", "quotient-banded-data-catalytic-work",
     "quotient-fallback-data-catalytic-work", "quotient-step2-fallback", "split-step4-kicks",
@@ -80,15 +79,15 @@ def test_a_document_without_the_key_has_no_selection_and_an_explicit_null_is_ref
 
 def test_no_selection_and_the_explicit_reference_are_both_no_design_at_all():
     """Fails if full_run_design.design_of returns an all-defaults record ({}) for `reference` instead of None.
-    QFT-SURFACE-MAPPING.md section 1.2: `reference` is compiledSelection = none, NOT an empty Design."""
+    THE EMPTY SELECTION IS NOT A DESIGN: `reference` means the selection is ABSENT, not an empty design."""
     assert full_run_design.design_of(None) is None
     got = full_run_design.design_of(selection("reference"))
     assert got is None and got != {}
 
 
 def test_the_profile_transcription_still_reproduces_the_research_bridge():
-    """Fails if full_run_design's tables stop reproducing readiness/pre-push/audit_native_fullrun.py:20-46,
-    the existing research<->production bridge (EXACT / CAT / BAND and the CASES table).
+    """Fails if full_run_design's tables stop reproducing the existing research<->production bridge -- the
+    audit script's own EXACT / CAT / BAND constants and its case table.
 
     This asserts the TABLE, not design_of's answer: since the modmul fix, every one of these profiles is
     refused on its topology (see test_no_profile_is_priceable_because_the_overlay_cannot_honour_a_topology),
@@ -102,12 +101,11 @@ def test_the_profile_transcription_still_reproduces_the_research_bridge():
     assert full_run_design.QFT_ONLY["quotient-banded-data-catalytic-work"] == {"data": banded, "work": catalytic}
 
 
-def test_every_profile_carries_the_multiplier_topology_audit_native_fullrun_gives_it():
-    """THE MODMUL REGRESSION (lane WS). `audit_native_fullrun.py:25-30` builds every bundle through
-    `quotient(...)` / `split(...)`, both of which emit `modmul` BESIDE `qft`; QFT-SURFACE-MAPPING.md
-    section 1.1 gives the same `multiplier :=` field for all seven. The topology drives the T cost
-    (policy_design.py:139-142) and the qubit base (:160-162), so dropping it prices a quotientStream or
-    splitCompare run on REFERENCE numbers -- a silent default.
+def test_every_profile_carries_the_multiplier_topology_the_audit_bridge_gives_it():
+    """THE MODMUL REGRESSION (lane WS). The audit bridge builds every bundle through its quotient / split
+    constructors, both of which emit `modmul` BESIDE `qft`, and the research mapping gives the same
+    multiplier field for all seven. The topology drives both the T cost and the qubit base, so dropping it
+    prices a quotientStream or splitCompare run on REFERENCE numbers -- a silent default.
 
     Fails if the conversion ever stops carrying `modmul`, which is exactly the defect this test was added
     for: before the fix, `design_of` returned a bare family mapping and the topology was lost."""
@@ -296,8 +294,8 @@ def test_a_design_is_threaded_to_the_qft_overlay_and_never_to_the_engines_pricer
 
 
 def test_a_design_is_refused_at_every_delta_but_1e_2(seam):
-    """Fails if pricing.price_views prices a design outside the only precision the QFT surface is qualified at
-    (QFT-SURFACE-MAPPING.md section 1: delta = 1e-2 only)."""
+    """Fails if pricing.price_views prices a design outside the only precision the QFT surface is qualified
+    at: delta = 1e-2 only."""
     design = full_run_design.design_of(explicit_banded())
     for delta in ("3e-4", "1e-4", "1e-6"):
         with pytest.raises(ValueError, match="delta 1e-2"):
