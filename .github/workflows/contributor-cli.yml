@@ -15,6 +15,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          # The price-surface guard reads `engineRevision` from `git log -1 -- evaluation/engine` and compares
+          # every epoch input against its recorded manifest. At the default depth of 1 that history is absent:
+          # the guard reports the epoch as moved, and since it only enforces while the epoch stands still, it
+          # would quietly never fire. `price_surface.require_history` now refuses that state outright.
+          fetch-depth: 0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.12'

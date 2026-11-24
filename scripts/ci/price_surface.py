@@ -328,9 +328,27 @@ def load(path: Path = MANIFEST) -> dict:
     return m
 
 
+def require_history(repo: Path = REPO) -> None:
+    """Refuse to judge on a truncated history.
+
+    `engineRevision` is `git log -1 -- evaluation/engine`, so a shallow checkout cannot compute it. The value it
+    returns instead differs from the manifest's, which reads as "an epoch input moved" -- and enforcement is
+    conditioned on the epoch standing still, so the guard would quietly become advisory-only and never fire. A
+    guard that cannot see is not a passing guard; it is no guard. `actions/checkout` defaults to depth 1, so this
+    is the normal state of a CI job unless it asks for `fetch-depth: 0`.
+    """
+    shallow = _git("rev-parse", "--is-shallow-repository", repo=repo).strip()
+    if shallow == "true":
+        raise RuntimeError(
+            "price surface: this is a shallow checkout, so `engineRevision` cannot be read and the guard would "
+            "silently degrade to advisory-only. Check out with `fetch-depth: 0` (see "
+            ".github/workflows/contributor-cli.yml).")
+
+
 def check(manifest: dict, repo: Path = REPO) -> dict:
     """The guard. `findings` is non-empty exactly when a price-relevant path moved with every epoch input standing
     still -- that is, when a published number could have changed with no epoch to attribute it to."""
+    require_history(repo)
     now_inputs = epoch_inputs(repo)
     was_inputs = manifest["epochInputs"]
     inputs_moved = {k: {"was": was_inputs.get(k), "now": v} for k, v in now_inputs.items() if was_inputs.get(k) != v}

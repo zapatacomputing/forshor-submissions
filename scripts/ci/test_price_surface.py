@@ -10,6 +10,7 @@ import copy
 import json
 from pathlib import Path
 import unittest
+import unittest.mock
 
 import price_surface as ps
 
@@ -201,6 +202,40 @@ class MirrorsTheEngine(unittest.TestCase):
         self.assertEqual(inputs["forshorPin"], model["forshor"]["pin"])
         self.assertEqual(inputs["leanToolchain"], model["lean"])
         self.assertEqual(ps._site_model_version(), model["id"])
+
+
+class ShallowCheckout(unittest.TestCase):
+    """The guard must refuse a history it cannot read, rather than passing.
+
+    `actions/checkout` defaults to depth 1. On that history `engineRevision` cannot be computed, the guard reads
+    the epoch as moved, and because R1 only enforces while the epoch stands still it becomes advisory-only --
+    silently, and in exactly the environment it exists to protect. This was live: the first CI run of this guard
+    reported `epochStoodStill: False` with zero findings while the same commit enforced correctly on a full
+    clone. It is the vacuity failure this file's docstring is about, so it gets a test of its own.
+    """
+
+    def test_a_shallow_checkout_is_refused_outright(self):
+        with unittest.mock.patch.object(ps, "_git", return_value="true\n") as git:
+            with self.assertRaises(RuntimeError) as caught:
+                ps.require_history(REPO)
+        git.assert_called_once()
+        self.assertIn("shallow", str(caught.exception))
+        self.assertIn("fetch-depth: 0", str(caught.exception), "the message must say how to fix it")
+
+    def test_a_full_checkout_is_accepted(self):
+        with unittest.mock.patch.object(ps, "_git", return_value="false\n"):
+            ps.require_history(REPO)       # must not raise
+
+    def test_check_itself_refuses_before_judging(self):
+        """Not merely the helper: `check` must not return a verdict derived from unreadable history."""
+        with unittest.mock.patch.object(ps, "require_history",
+                                        side_effect=RuntimeError("shallow ... fetch-depth: 0")):
+            with self.assertRaises(RuntimeError):
+                ps.check(ps.load())
+
+    def test_this_repository_has_the_history_the_guard_needs(self):
+        """The guard is only meaningful where it runs; assert the condition rather than assume it."""
+        ps.require_history(REPO)
 
 
 if __name__ == "__main__":
