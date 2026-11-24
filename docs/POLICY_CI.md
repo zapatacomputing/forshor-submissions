@@ -6,7 +6,7 @@ Verification uses trusted base-branch code and full Git history. It builds the p
 
 ## Environments and limits
 
-A policy may contain at most **256 bands**, matching the shared publisher/frontend contract in `forshor-site`. Local `./forshor check` and hosted verification reject larger policies before the mirror runs (for Lean input, after ForShor extracts the policy). Trusted publication enforces the same limit before resource estimation. The submitted Lean file remains limited to 1,000,000 bytes; memory, runtime and publication payload limits still apply independently.
+A policy may contain at most **256 bands**, the limit the publisher and the frontend share; `MAX_POLICY_BANDS` in `evaluation/intake_v2.py` is the copy this repository enforces. Local `./forshor check` and hosted verification reject larger policies before the mirror runs (for Lean input, after ForShor extracts the policy). Trusted publication enforces the same limit before resource estimation. The submitted Lean file remains limited to 1,000,000 bytes; memory, runtime and publication payload limits still apply independently.
 
 `Warm policy verification environments` builds on trusted `main`, then saves separate ForShor, STO, and Python caches. PR jobs restore only; they never save these caches. The v2 Python environment is separate from the legacy estimator, and uses `evaluation/engine/requirements.txt` with vendored Qualtran. The publisher checkout must include full history so `engineRevision` is the actual last engine change, rather than the shallow checkout's tip.
 

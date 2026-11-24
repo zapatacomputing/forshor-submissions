@@ -20,7 +20,7 @@ test('an accepted policy gets its digest, commit, snapshot, a plain citation and
   assert.ok(text.includes(`Policy digest (sha256): \`${DIGEST}\``));
   assert.ok(text.includes(`Submission commit: \`${HEAD}\``));
   assert.ok(text.includes(`Published in snapshot: \`${SNAPSHOT}\``));
-  // The same literal is the expected text in forshor-site (tests/submission-cite.test.ts): this comment and the site's Details dialog must agree.
+  // The publisher's own test pins this same literal, and its Details dialog renders it: the two must agree, so change them together.
   assert.ok(text.includes(`courtneyjzapata (2026). ForShor challenge: PhaseProduct policy courtneyjzapata_sub1, pull request #68. policy digest sha256:${DIGEST}; submission commit ${HEAD}. https://github.com/zapatacomputing/forshor-submissions/pull/68\n`));
   assert.ok(!/; epoch |; snapshot /.test(text), 'what changes with a publication is not in the citation');
   assert.match(text, /```bibtex\n@misc\{forshor_f11abb65fbc7,\n  author = \{courtneyjzapata\},\n  title = \{ForShor challenge: PhaseProduct policy courtneyjzapata\\_sub1\},\n  year = \{2026\},/);
