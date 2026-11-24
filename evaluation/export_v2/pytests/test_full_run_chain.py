@@ -500,20 +500,60 @@ def test_a_qft_design_and_a_step_2_fallback_cannot_be_asked_for_together(policy=
        all three together with the reason, so none can be relaxed without confronting the arithmetic above.
        It is the same call lane WY made for readout + design, for the same reason: two methods that each
        re-divide one nonlinear budget cannot be composed by picking a precedence.
+
+    EXTENDED BY LANE XL, which ported the Tier 3b Step 4 adaptive and controlled Steps 1/5 sampled costings
+    into `step4_sampled_fallback.py` and `controlled_sampled_fallback.py`. Both draw on this same pool -- the
+    research plans they came from declare `error_pool` 1/200, which IS the engine's pool at delta 1e-2 -- so
+    the family below is now three pricers, not one, and the fourth clause covers all four phase-product
+    steps rather than two. The Tier 3b arithmetic, the per-scope partition rule and the refusal of every
+    double-spending combination are in `test_tier3b_sampled_costing.py`; this test keeps the chain-side
+    statement: nothing in the pricing chain composes with any of them.
     """
+    import ast
     import re
     from pathlib import Path as _Path
 
-    # 1. WT reads none of the currency, and nothing in production calls it.
-    source = _Path(qft_overlay.__file__).parent.joinpath("sampled_fallback.py").read_text()
-    for name in ("sto_currency", "ROTATION_FRACTION", "rotation_eps", "ts_per_rotation"):
-        assert name not in source, f"sampled_fallback now reads {name}: the budgets may no longer be independent"
+    def _imports(text):
+        """Every module name a file actually imports, including deferred imports inside functions.
+
+        Parsed rather than grepped (lane XL): the substring form of this clause could not tell a CALL from a
+        MENTION, and it fired on `qft_overlay`'s own docstring once that docstring started explaining which
+        module prices each out-of-scope selector. Naming the refusal is the opposite of composing with it."""
+        found = set()
+        for node in ast.walk(ast.parse(text)):
+            if isinstance(node, ast.Import):
+                found |= {alias.name.rsplit(".", 1)[-1] for alias in node.names}
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    found.add(node.module.rsplit(".", 1)[-1])
+                found |= {alias.name for alias in node.names}
+        return found
+
+    # 1. No sampled pricer reads the currency, and nothing in production calls one.
+    #    `rotation_pool.py` is the one module allowed to NAME the pool: it is not a pricer, it imports
+    #    nothing from the engine and derives no allowance -- it only checks that the caller's own terms
+    #    partition. Lane XL's `test_no_sampled_pricer_derives_its_own_allowance_from_the_engine_currency`
+    #    pins that distinction.
+    SAMPLED = ("sampled_fallback.py", "step4_sampled_fallback.py", "controlled_sampled_fallback.py")
+    for name in SAMPLED:
+        source = _Path(qft_overlay.__file__).parent.joinpath(name).read_text()
+        for token in ("sto_currency", "ROTATION_FRACTION", "rotation_eps", "ts_per_rotation"):
+            assert token not in source, \
+                f"{name} now reads {token}: the budgets may no longer be independent"
     production = [p for p in _Path(qft_overlay.__file__).parent.glob("*.py")
-                  if p.name not in ("sampled_fallback.py",)]
+                  if p.name not in (*SAMPLED, "rotation_pool.py")]
+    assert production, "the production module list cannot be empty"
     for path in production:
-        text = path.read_text()
-        assert "sampled_fallback" not in text, \
-            f"{path.name} now calls the sampled fallback: the double-spend analysis above must be redone"
+        called = _imports(path.read_text()) & {name[:-3] for name in SAMPLED}
+        assert not called, \
+            f"{path.name} now imports {sorted(called)}: the double-spend analysis above must be redone"
+    # The sampled pricers may share one estimator between them -- there is one Maurer-Pontil implementation
+    # in this repository, not three -- but none of them may reach back into the chain.
+    for name in SAMPLED[1:]:
+        imported = _imports(_Path(qft_overlay.__file__).parent.joinpath(name).read_text())
+        assert "sampled_fallback" in imported, f"{name} no longer shares the one estimator"
+        assert not imported & {"qft_overlay", "full_run_design", "pricing", "mapping", "request"}, \
+            f"{name} now reaches into the pricing chain: it is no longer outside the publish path"
 
     # 2. The profile that selects a Step 2 fallback is refused by name, at the design step.
     with pytest.raises(ValueError) as profile_refusal:
@@ -529,7 +569,12 @@ def test_a_qft_design_and_a_step_2_fallback_cannot_be_asked_for_together(policy=
         assert step in str(explicit_refusal.value)
 
     # 4. And the overlay refuses the selector fields outright, so neither path can reach a price.
-    assert qft_overlay.OUT_OF_SCOPE == ("step2", "step4")
+    #    All four phase-product steps, as of lane XL: `step1` and `step5` were fail-closed before (the
+    #    unknown-key check caught them) but were refused as unrecognised FAMILIES rather than as scopes
+    #    needing their own qualification, and they now have one.
+    assert qft_overlay.OUT_OF_SCOPE == ("step1", "step2", "step4", "step5")
+    assert set(qft_overlay.OUT_OF_SCOPE) == set(full_run_design.PHASE_STEPS), \
+        "the overlay's out-of-scope selectors and the explicit path's phase steps must be the same set"
     for field in qft_overlay.OUT_OF_SCOPE:
         with pytest.raises(qft_overlay.QftOverlayRefused, match=re.escape(field)):
             qft_overlay.parse_design({"data": BANDED, field: {"backend": "fallback"}})
