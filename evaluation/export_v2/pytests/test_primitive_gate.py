@@ -567,6 +567,49 @@ def test_the_primitive_route_never_reaches_the_archive_whatever_the_archive_admi
     assert plan(["pp", "full"]) == "b" * 40
 
 
+def test_the_primitive_refusal_fires_before_the_archive_is_written(receipts, template, monkeypatch, tmp_path):
+    """OWNER RULING 2026-11-24 (ruling 3): a primitive qualification is LOCAL-ONLY BY DESIGN and the archive has no
+    nonpublishing write path -- deliberately. This test pins the ORDERING that makes it true, so it cannot be
+    silently inverted later.
+
+    The test above argues reachability from the flag sets; this one asserts it inside the one function where both a
+    primitive refusal and an archive write exist. `publish_verification` refuses the qualification key and the
+    compiled `submitted_primitive` selector near the top of the function, while `archive_write(v, ...)` is called far
+    below, just before the publisher. Those two could be reordered by an ordinary edit -- moving the refusal under a
+    later gate, or hoisting the archive write so the head is in the archive before anything else runs -- and nothing
+    else in the suite would notice, because the refusal would still fire and the CLI flag guards would still hold.
+    It would nevertheless put a local qualification's `Policy.lean`, `policy.json` and index entry on
+    `submission-results`, which is a frozen record (AGENTS.md rule 3) and cannot be taken back.
+
+    This is a TRIPWIRE on existing production code, not a non-vacuity check on a hunk this lane wrote: it is red only
+    if the refusal is moved after `archive_write`, or dropped. Said plainly, as lane XO said it for its H5b tripwire.
+
+    NOT A MISSING PATH. Do not "fix" the red by giving the archive a nonpublishing route. `primitive` and its `tKind`
+    are for a PUBLISHED primitive-bearing submission; the qualification receipts carry `localOnly: true` /
+    `publishable: false` and the published row's closed field set (`SITE_ROW_FIELDS` in
+    `test_design_price_plumbing.py`) has no field for the price. `archive_policy`'s module docstring states the
+    ruling."""
+    v = qualify(receipts, template, "b2-pp", monkeypatch, tmp_path)
+    receipt = json.loads(json.dumps(v))                       # through a file, as an artifact travels
+    stripped = {k: value for k, value in receipt.items() if k != "localPrimitiveQualification"}
+    assert "localPrimitiveQualification" in receipt and intake_v2.PRIMITIVE_KEY in stripped["printed"], \
+        "the two halves XG guards: the receipt's qualification key AND the compiled selector, each alone"
+
+    def never(*a, **kw):
+        pytest.fail("a primitive qualification reached the archive: the refusal no longer fires before archive_write")
+
+    monkeypatch.setattr(pricing, "price_views", lambda *a, **kw: pytest.fail("a refusal must price nothing"))
+    for n, record in enumerate((receipt, stripped)):
+        with pytest.raises(intake_v2.Refused, match="primitive qualification is local only; publishing is not enabled"):
+            intake_v2.publish_verification(record, login="tester", pull=7, url="http://x", token="t",
+                                           workdir=tmp_path / f"arch{n}", head_sha=HEAD_SHA, run_id="1",
+                                           archive_write=never, log=lambda s: None)
+    # And the archive write is genuinely reachable in this function for a receipt the route does admit -- otherwise
+    # `never` would be unreached for a reason that has nothing to do with the primitive.
+    assert "archive_write(v, readout=" in (EVAL / "intake_v2.py").read_text(), \
+        "publish_verification still has an archive-writing call for the refusal to fire ahead of"
+
+
 def test_no_primitive_bearing_entry_can_be_published_under_the_shipped_site_contract():
     """THE PUBLISHER ANSWER. The published row schema is closed: a row may carry no primitive key (lane XF's seam
     ruling pins `row_of`'s field set, as `SITE_ROW_FIELDS` in `test_design_price_plumbing.py`), and panel validation

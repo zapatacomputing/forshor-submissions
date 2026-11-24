@@ -15,10 +15,10 @@ digest does. Rejection sampling over 64-bit blocks, so there is no modulo bias a
 version.
 
 IT IS AN ESTIMATE, NOT A BOUND, and the receipt cannot say otherwise: `sampled_fallback.t_fields` emits
-`tKind` plus exactly one of `tSampledEstimateUpper` / `tCircuitBound` and no bare `T`. Binding the controlled
-plan needs every turn's certified word, which refuses a sample by construction, so no circuit is bound here.
-The per-site T is additionally an UNCONDITIONAL EXPECTATION (B3 is repeat-until-success), carried separately
-as `tSiteKind` -- lane XA's axis, orthogonal to this one.
+`tClaimKind` plus exactly one of `tSampledEstimateUpper` / `tCircuitBound` and no bare `T`. Binding the
+controlled plan needs every turn's certified word, which refuses a sample by construction, so no circuit is
+bound here. The per-site T is additionally an UNCONDITIONAL EXPECTATION (B3 is repeat-until-success), carried
+separately as `tKind` -- lane XA's axis, under XA's own name, orthogonal to this one (owner ruling 2026-11-24).
 
 TWO STEPS, ONE CLAIM. Steps 1 and 5 are priced in a single run against a single pool partition, with their
 own index space each and one summed endpoint. That is why they are ONE claimant on the budget and not two

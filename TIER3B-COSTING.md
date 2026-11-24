@@ -105,15 +105,23 @@ qualification. Now that they have one, `OUT_OF_SCOPE` is the full set and the tw
 
 XC's artifacts self-label `"estimate": true, "circuit_bound": false`. That honesty is carried through
 structurally, the way lane XA made deterministic-vs-expected-adaptive uncollapsible
-(`primitive_overlay.py:215-217`): `sampled_fallback.t_fields` emits **`tKind` plus exactly one of
+(`primitive_overlay.py:215-217`): `sampled_fallback.t_fields` emits **`tClaimKind` plus exactly one of
 `tSampledEstimateUpper` / `tCircuitBound`, and never a bare `T`**, with `check_t_fields` refusing a bare `T`,
-both fields at once, neither, or labels that contradict `tKind`. Every interval block and every controlled
-per-step block goes through it, and `check_receipt` re-checks on the way out.
+both fields at once, neither, or labels that contradict `tClaimKind`. Every interval block and every
+controlled per-step block goes through it, and `check_receipt` re-checks on the way out.
+
+**The key names are the owner's ruling of 2026-11-24 (ruling 2), not this lane's.** This lane originally
+called the claim class `tKind` and XA's per-site axis `tSiteKind`. Two vocabularies had claimed one key, and
+**XA keeps `tKind`**: XA's axis is structurally enforced and reaches production (no bare `T`, exactly one of
+`tDeterministic` / `tExpectedAdaptive`, re-checked in `mapping.standalone_price_of` and again by the published
+contract, whose primitive block is a union discriminated on `tKind` itself), whereas this claim class is a
+pass-through string with no predicate behind it. So the claim class is **`tClaimKind`** and the per-site axis
+is **`tKind`** everywhere.
 
 **Two axes, both carried.** XA's axis is about what the per-site T *is*; this one is about where the total
 *came from*. A B3 site's T is an unconditional expectation (repeat-until-success), so a sampled B3 phase is an
-**estimate of an expectation** — twice removed from a worst case. `tSiteKind` carries the first axis beside
-the second, so neither step can be read away. Both lanes also publish a `no_bound_basis` string saying *why*
+**estimate of an expectation** — twice removed from a worst case. `tKind` carries the first axis beside
+`tClaimKind`, so neither step can be read away. Both lanes also publish a `no_bound_basis` string saying *why*
 no bound exists (495,000 turns against a 4,096-turn recertification cap; ~1.0e9 words for the controlled
 bank), so "estimate" is a statement with a reason rather than a disclaimer.
 
@@ -262,10 +270,11 @@ are sound and now reachable. What is missing is a publication route, and four of
    receipts reach no panel and no row. This mirrors what integration wave 2 says about WT: *"Any production
    caller for WT's sampled Step 2 fallback"* is explicitly not in the release. Adding one is a decision, not a
    fix.
-2. **The site contract has no field for an estimate.** `mapping.row_of:289` emits a bare `"T"`, and the row
-   is a Zod `strictObject` whose `rowFields` name no kind; the panel's `fullRun` is a `strictObject` whose
-   only optional price is `readout`. So a Tier 3b number has nowhere to go that says what it is — and putting
-   it in `T` is exactly the harm `tKind` exists to prevent. This is the same wall lane XD hit for the design
+2. **The published contract has no field for an estimate.** `mapping.row_of` emits a bare `"T"`, and the row's
+   field set is closed and names no kind — an unrecognised key is rejected, not ignored (`SITE_ROW_FIELDS` in
+   `evaluation/export_v2/pytests/test_design_price_plumbing.py`); the panel's full-run block is closed the same
+   way and its only optional price is the readout. So a Tier 3b number has nowhere to go that says what it is — and putting
+   it in `T` is exactly the harm `tClaimKind` exists to prevent. This is the same wall lane XD hit for the design
    key, and it needs a site-side change, not a repository-side one.
 3. **Both topologies are refused this release.** XC's Step 4 lane requires `modmul = split_compare` and the
    controlled lane requires `quotient_stream`; measured at this head, both refuse by name on WR's topology
