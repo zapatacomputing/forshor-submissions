@@ -1,12 +1,12 @@
 {
-  "comment": "The Lean trees a policy submission is checked in. `./forshor setup` and `./forshor check` build them under .git/forshor, and the policy verifier (scripts/policy_verifier.py) is given them as FORSHOR_TREE and STO_TREE. The STO mirror's tree is this repository itself: its TableGeneration, harness scripts, JMC_NOTES.md and lake-manifest.json are the STO fork's main at 2558595 (sync/sto-fork-2558595), so nothing private is cloned. The ForShor tree is a public clone at the ref below, the OPERATIONAL pin: the checkout a submission is compiled in. It is the native candidate 80d7b6b, approved for this release; it succeeds 82e2274 (the pinned 21e129a plus documentation, the PhaseTripleProduct submission files of PR #83 and the run-time extraction's smaller lookup budget with a retry at the former one, PR #85). This pin is NOT an epoch input: the epoch's model/mirror pin is the FROZEN 21e129a in lake-manifest.json, and the epoch stays ab1f8887b1b50e56 across this move. It IS a verification input (scripts/ci/verification_identity.py INPUTS), so moving it re-verifies every already-verified head.",
+  "comment": "The Lean trees a policy submission is checked in. `./forshor setup` and `./forshor check` build them under .git/forshor, and the policy verifier (scripts/policy_verifier.py) is given them as FORSHOR_TREE and STO_TREE. The STO mirror's tree is this repository itself: its TableGeneration, harness scripts, JMC_NOTES.md and lake-manifest.json were vendored from the upstream STO fork's main by commit 8cefbb1 on branch sync/sto-fork-2558595, so nothing private is cloned. The ForShor tree is a public clone at the ref below, the OPERATIONAL pin: the checkout a submission is compiled in. It is the native candidate 80d7b6b, approved for this release; it succeeds 82e2274 (the pinned 21e129a plus documentation, the PhaseTripleProduct submission files of PR #83 and the run-time extraction's smaller lookup budget with a retry at the former one, PR #85). This pin is NOT an epoch input: the epoch's model/mirror pin is the FROZEN 21e129a in lake-manifest.json, and the epoch stays ab1f8887b1b50e56 across this move. It IS a verification input (scripts/ci/verification_identity.py INPUTS), so moving it re-verifies every already-verified head.",
   "forshor": {
     "repo": "https://github.com/VerifiedQC/ForShor",
     "ref": "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
   },
   "sto": {
     "repo": "self",
-    "syncedFrom": "courtneyjzapata/ShorTableOptimization_temp@2558595470a5fb88cb8d02f6114b7f3c230d5f24"
+    "syncedFrom": "sync/sto-fork-2558595@8cefbb1ae86f2e4415a1cd100314e9a3e9506786"
   },
   "sto_build": [
     "TableGeneration.RecursiveCost.BandedPolicy",
