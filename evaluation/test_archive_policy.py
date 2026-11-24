@@ -468,6 +468,243 @@ def test_the_planner_reads_the_mode_it_is_given(remote):
         ap.plan_readout_variant(index, **binding, readout="coherent", mode="pair")
 
 
+# ---- the Tier 2/3 entry kinds: a standalone synthesis primitive and a QFT design are results of the same policy,
+# ---- exactly as the readout is, and the archive is the only durable record of either (lane XO).
+
+B2, B3 = "catalyticB2", "adaptiveB3"
+#: A QFT design as `qft_overlay.parse_design` receives it, in the shape `full_run_design` hands over
+#: (`Gate5Design.lean`'s `QftChoice.json` per family). Two designs that differ, for the variant rules.
+BANDED = {"data": {"backend": "ross_selinger", "target": "approximate", "max_error": "1e-6"}}
+CATALYTIC = {"data": {"backend": "catalytic", "target": "exact"}}
+
+
+def ptp(source=SOURCE, **kw):
+    v = verification(source, **kw)
+    v["mode"], v["board"] = "triple", "ptp"
+    return v
+
+
+def test_the_explicit_default_of_every_axis_is_the_omitted_default(tmp_path):
+    # Fails if write_policy writes `readout`, `boards`, `primitive`, `tSiteKind` or `design` for a submission that
+    # asked for none of them: every row already on `submission-results` was written by this path (git blob 650b2416,
+    # submission tree 9f99f79f, pinned above), and none of them may move.
+    put(plain(tmp_path), readout="coherent", primitive=None, design=None)
+    assert (tmp_path / "archive" / ap.INDEX_PATH).read_bytes() == LEGACY_INDEX.encode()
+
+
+def test_the_archive_names_exactly_the_primitives_the_overlay_prices_and_no_default():
+    # Fails if PRIMITIVE_T_SITE_KIND drifts from export_v2.primitive_overlay -- if the archive admits a primitive the
+    # overlay does not price, or records rossSelinger as a value rather than as the absence of the key.
+    # The primitive -> kind binding itself was measured against XA's four receipts on the pinned interpreter:
+    # catalyticB2 rankedT 26,478,500 (pp) / 97,329,643 (ptp), tKind "deterministic"; adaptiveB3 143,366,613 (pp) /
+    # 140,780,047 (ptp), tKind "expectedAdaptive". A fast test cannot reprice, so the names are pinned here and the
+    # pair is enforced structurally by check_entry.
+    from export_v2 import primitive_overlay as overlay
+    assert sorted(ap.PRIMITIVE_T_SITE_KIND) == sorted(overlay.PRIMITIVE_OF.values())
+    assert overlay.DEFAULT_PRIMITIVE not in ap.PRIMITIVE_T_SITE_KIND, "the default stamps nothing: it is no key at all"
+    source = Path(overlay.__file__).read_text()
+    for kind in ap.PRIMITIVE_T_SITE_KIND.values():
+        assert f'kind = "{kind}"' in source, f"the overlay no longer prices a {kind} T"
+    assert set(ap.PRIMITIVE_T_SITE_KIND.values()) == {"deterministic", "expectedAdaptive"}
+
+
+@pytest.mark.parametrize("primitive,kind", sorted(ap.PRIMITIVE_T_SITE_KIND.items()))
+def test_a_primitive_bearing_entry_names_the_primitive_and_what_kind_of_number_its_T_is(primitive, kind, tmp_path):
+    # Fails if write_policy drops the `primitive` / `tSiteKind` block, or records a number. adaptiveB3's T is an
+    # UNCONDITIONAL EXPECTATION and catalyticB2's is deterministic; lane XA made the two uncollapsible in the price
+    # (no bare T, tKind plus exactly one of tDeterministic/tExpectedAdaptive) and the archive is where the result is
+    # kept forever, so a row that flattened it would lose the distinction for good.
+    checkout = plain(tmp_path)
+    assert put(checkout, primitive=primitive) is True
+    entry = entry_of(checkout, HEAD)
+    assert entry["primitive"] == primitive and entry["tSiteKind"] == kind
+    assert entry["boards"] == ["pp", "full"], "a first copy of the policy is its own primitive, on both its boards"
+    assert not [k for k in ap.BARE_PRICE_KEYS if k in entry], "the archive records which result, never the number"
+
+
+@pytest.mark.parametrize("first,second", [(None, B2), (B2, None), (B2, B3), (B3, B2)])
+def test_your_own_policy_with_another_primitive_is_a_standalone_only_variant(first, second, tmp_path):
+    # Fails if plan_readout_variant compares on the readout alone (WA's `chosen == readout`) instead of on the whole
+    # result kind: a different synthesis primitive would then be refused as a repeat of the policy it re-prices.
+    # Both arrival orders, including arriving before and after the plain default entry.
+    checkout = plain(tmp_path)
+    assert put(checkout, primitive=first) is True
+    assert put(checkout, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2,
+               primitive=second) is True
+    earlier, variant = entry_of(checkout, HEAD), entry_of(checkout, HEAD2)
+    assert variant.get("primitive") == second and variant["boards"] == ["pp"], \
+        "a primitive re-prices the standalone board only -- the full order-finding board takes no primitive"
+    assert variant["readout"] == "coherent", "the readout axis is untouched by a primitive variant"
+    if first is None:
+        assert "primitive" not in earlier and "boards" not in earlier, "the legacy default entry is never backfilled"
+    else:
+        assert earlier["primitive"] == first and earlier["boards"] == ["pp", "full"]
+
+
+def test_a_readout_variant_and_a_primitive_variant_divide_the_boards_the_other_way(tmp_path):
+    # Fails if variant_boards stops reading AXIS_BOARD and hard-codes one half: the readout re-prices the full run and
+    # surrenders the standalone row to the earlier entry (lane WA), a primitive does exactly the reverse.
+    for name, axis, boards in (("readout", {"readout": "semiclassical"}, ["full"]), ("primitive", {"primitive": B2}, ["pp"])):
+        checkout = plain(tmp_path, name)
+        put(checkout)
+        put(checkout, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2, **axis)
+        assert entry_of(checkout, HEAD2)["boards"] == boards, name
+
+
+def test_a_primitive_that_also_changes_the_full_run_is_its_own_primitive_on_both_boards(tmp_path):
+    # Fails if the boards are read off one axis rather than the union: an entry that re-prices BOTH rows surrenders
+    # nothing to the earlier entry, so it is its own base and names both boards.
+    checkout = plain(tmp_path)
+    put(checkout)
+    put(checkout, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2,
+        primitive=B2, design=BANDED)
+    assert entry_of(checkout, HEAD2)["boards"] == ["pp", "full"]
+
+
+@pytest.mark.parametrize("primitive", [None, B2, B3])
+def test_the_same_policy_with_the_same_primitive_is_still_a_repeat(primitive, tmp_path):
+    # Fails if the generalised comparison stops raising DuplicatePolicy when every axis agrees -- the repeat
+    # DUPLICATE_RULES have always refused.
+    checkout = plain(tmp_path)
+    put(checkout, primitive=primitive)
+    before = (checkout / ap.INDEX_PATH).read_bytes()
+    with pytest.raises(ap.DuplicatePolicy, match="already submitted") as refused:
+        put(checkout, verification(SOURCE2), head=HEAD2, source=SOURCE2, primitive=primitive)
+    assert refused.value.duplicate_of["policyId"] == HEAD and refused.value.source == "the readout variant planner"
+    assert (checkout / ap.INDEX_PATH).read_bytes() == before, "the refused repeat wrote nothing"
+    assert not (checkout / ap.DIR / HEAD2).exists()
+
+
+def test_a_phase_triple_product_primitive_occupies_its_own_board_and_never_the_full_run(tmp_path):
+    # Fails if BOARDS_OF is dropped and every policy is read as the PhaseProduct pair: a PhaseTripleProduct policy does
+    # not enter the full order-finding board at all, so its primitive entry names ["ptp"] and claims no full-run row.
+    checkout = plain(tmp_path)
+    assert put(checkout, ptp()) is True
+    assert put(checkout, ptp(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2, primitive=B3) is True
+    assert entry_of(checkout, HEAD2)["boards"] == ["ptp"] and entry_of(checkout, HEAD2)["primitive"] == B3
+    assert "boards" not in entry_of(checkout, HEAD), "the legacy PhaseTripleProduct entry is read, not rewritten"
+
+
+def test_an_unknown_primitive_or_design_is_refused_and_writes_nothing(tmp_path):
+    # Fails if write_policy accepts a primitive name or a design body without asking the planner, which is the only
+    # check of either (the same arrangement WA made for the readout).
+    checkout = plain(tmp_path)
+    for kw, why in ((dict(primitive="catalytic-b2"), "unknown synthesis primitive"),      # the selector label, not the attested name
+                    (dict(primitive="rossSelinger"), "unknown synthesis primitive"),      # the default is no key, never a value
+                    (dict(design={}), "unknown QFT design"),
+                    (dict(design={"data": "approximate"}), "unknown QFT design"),
+                    (dict(design=["data"]), "unknown QFT design")):
+        with pytest.raises(ap.ArchiveRefused, match=why):
+            put(checkout, **kw)
+    assert ap.read_index(checkout)["policies"] == [] and not (checkout / ap.DIR).exists()
+
+
+def test_a_primitive_on_the_full_order_finding_board_is_refused(tmp_path):
+    # Fails if the planner stops checking the board a result kind is archived for. `primitive_overlay` refuses the full
+    # board by name ("a standalone primitive is priced on the PhaseProduct and PhaseTripleProduct boards only"); an
+    # archive row claiming a full-run primitive would outlive that refusal.
+    checkout = plain(tmp_path)
+    v = verification()
+    v["board"] = "full"
+    with pytest.raises(ap.ArchiveRefused, match="cannot be archived for the 'full' board"):
+        put(checkout, v, primitive=B2)
+    assert ap.read_index(checkout)["policies"] == [] and not (checkout / ap.DIR).exists()
+
+
+def test_the_same_head_priced_as_a_different_result_is_refused_not_a_no_op(remote):
+    # Fails if the idempotency check still compares only the source, the digest and the summary: a readout, a primitive
+    # and a design all leave those three identical, so re-running one head with a different result silently returned
+    # "already archived" and kept the first entry.
+    bare, clone = remote
+    first = archive(clone, primitive=B2)
+    assert archive(clone, primitive=B2)["added"] is False, "the exact retry is still a no-op"
+    before = tip(bare)
+    for kw in (dict(primitive=B3), dict(primitive=None), dict(primitive=B2, design=CATALYTIC),
+               dict(primitive=B2, readout="semiclassical")):
+        with pytest.raises(ap.ArchiveRefused, match="already archived as a different result"):
+            archive(clone, **kw)
+    assert tip(bare) == before == first["commit"], "nothing was pushed, and the first entry still stands"
+    assert entry_of(clone, HEAD)["primitive"] == B2
+
+
+def test_another_participants_primitive_is_its_own_result_and_only_identified(remote):
+    # Fails if the generalised variant rule reaches other participants: DUPLICATE_RULES must keep deciding for them,
+    # and their primitive-bearing submission is its own primitive, never a variant of a policy they do not own.
+    bare, clone = remote
+    archive(clone)
+    got = archive(clone, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2,
+                  login="other", primitive=B3)
+    assert got["added"] is True
+    assert [(d["policyId"], d["sameParticipant"]) for d in got["duplicates"]] == [(HEAD, False)]
+    entry = entry_of(clone, HEAD2)
+    assert entry["boards"] == ["pp", "full"] and entry["primitive"] == B3 and entry["tSiteKind"] == "expectedAdaptive"
+
+
+def test_an_entry_may_never_carry_a_bare_price_or_a_contradicted_T_kind():
+    # Fails if check_entry is dropped or stops being called from write_policy. This is the archive's own refusal to be
+    # the place the distinction is lost: a bare number a reader could rank without its kind, or a primitive recorded
+    # with the other primitive's kind of T.
+    for bare in ap.BARE_PRICE_KEYS:
+        with pytest.raises(ap.ArchiveRefused, match="never the number"):
+            ap.check_entry({"policy_id": HEAD, "primitive": B3, "tSiteKind": "expectedAdaptive", bare: 143366613})
+    for primitive, wrong in ((B3, "deterministic"), (B2, "expectedAdaptive"), (B2, None)):
+        with pytest.raises(ap.ArchiveRefused, match="never the same claim"):
+            ap.check_entry({"policy_id": HEAD, "primitive": primitive, "tSiteKind": wrong})
+    assert ap.check_entry({"policy_id": HEAD})["policy_id"] == HEAD, "a legacy entry passes unchanged"
+
+
+# ---- the QFT design: the archive is the only place that can say WHICH design produced a row
+
+def test_a_design_bearing_entry_names_the_design_because_nothing_else_records_it(tmp_path):
+    # Fails if write_policy drops the `design` key. `mapping.row_of` copies no design key and the site's rowSchema is a
+    # strictObject with no field for one (lane XF), while `mapping.ranked_price_of` now ranks the projection's own T and
+    # qubits -- so without this key a design-bearing result is recorded nowhere at all.
+    checkout = plain(tmp_path)
+    assert put(checkout, design={"work": CATALYTIC["data"], "data": BANDED["data"]}) is True
+    entry = entry_of(checkout, HEAD)
+    assert list(entry["design"]) == ["data", "work"], "the families are recorded in a stable order"
+    assert entry["design"]["data"] == BANDED["data"] and entry["boards"] == ["pp", "full"]
+    assert "primitive" not in entry and entry["readout"] == "coherent"
+
+
+@pytest.mark.parametrize("first,second", [(None, BANDED), (BANDED, None), (BANDED, CATALYTIC)])
+def test_your_own_policy_with_another_qft_design_is_a_full_only_variant(first, second, tmp_path):
+    # Fails if the design is left out of the planner's comparison: two designs of one policy would be refused as
+    # repeats of each other, and a design would be invisible to the variant rule that divides the boards.
+    checkout = plain(tmp_path)
+    assert put(checkout, design=first) is True
+    assert put(checkout, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2,
+               design=second) is True
+    variant = entry_of(checkout, HEAD2)
+    assert variant.get("design") == second
+    assert variant["boards"] == ["full"], "a QFT design re-prices the full run, at mapping.DESIGN_DELTA, and nothing else"
+
+
+def test_the_same_policy_with_the_same_design_is_still_a_repeat(tmp_path):
+    # Fails if the design comparison is by identity or by presence rather than by value.
+    checkout = plain(tmp_path)
+    put(checkout, design=BANDED)
+    before = (checkout / ap.INDEX_PATH).read_bytes()
+    with pytest.raises(ap.DuplicatePolicy, match="already submitted"):
+        put(checkout, verification(SOURCE2), head=HEAD2, source=SOURCE2, design=dict(BANDED))
+    assert (checkout / ap.INDEX_PATH).read_bytes() == before, "the refused repeat wrote nothing"
+
+
+def test_a_result_that_reprices_no_board_of_this_policy_is_refused(tmp_path):
+    # Fails if the empty-boards guard is dropped: a readout or a design re-prices the full order-finding run, which a
+    # PhaseTripleProduct policy does not enter, so such an entry would be written claiming its own board, or `boards:
+    # []` -- a row claiming no board at all. Refused with and without an earlier entry to be a variant of.
+    for kw in (dict(design=BANDED), dict(readout="semiclassical")):
+        checkout = plain(tmp_path, f"ptp-{len(kw)}{list(kw)[0]}")
+        with pytest.raises(ap.ArchiveRefused, match="re-prices no board of a 'ptp' policy"):
+            put(checkout, ptp(), **kw)
+        assert ap.read_index(checkout)["policies"] == [] and not (checkout / ap.DIR).exists()
+        put(checkout, ptp())
+        with pytest.raises(ap.ArchiveRefused, match="re-prices no board of a 'ptp' policy"):
+            put(checkout, ptp(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2, **kw)
+        assert [p["policy_id"] for p in ap.read_index(checkout)["policies"]] == [HEAD]
+
+
 # --- C20 / C21: two archive checks raised byte-identical messages -------------------------------
 # Census: ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md. Nothing below changes which
 # submissions are archived or refused; only the reason says which check refused.
