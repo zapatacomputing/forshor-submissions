@@ -201,11 +201,27 @@ def refuse_unqualified_design(source: str) -> None:
 
 
 def refuse_unqualified_primitive(source: str) -> None:
+    """The standing refusal for every ORDINARY route: byte-identical, and still called wherever a primitive is not
+    being qualified. `policy_from_lean(..., qualify_primitive=True)` is the separate nonpublishing route the message
+    has always pointed at (`scripts/ci/policy_source._SELECTOR_CAUSES`, `docs/CLI.md`); before 2026-11-24 that route
+    did not exist, so the refusal was unconditional and lane XA's exact standalone pricing was unreachable.
+
+    The explicit default is NOT a selection: `_without_default_selectors` consumes `def submittedPrimitive :
+    Shor.PrimitiveSynthesis := .rossSelinger` first (owner ruling 2026-11-24, commit a4a7609, recognised by WJ's
+    generalised `policy_source.default_selectors`), so an explicit default reaches this refusal on no route and is
+    priced exactly as writing nothing is."""
     residual = _without_default_selectors(source)
     if re.search(r"(?<![\w'])submittedPrimitive(?![\w'])", residual):
         number, cause = _selector_cause(residual, "submittedPrimitive")
         raise Refused("format", "submittedPrimitive requires separate nonpublishing primitive qualification: "
                                 f"line {number}, {cause}")
+
+
+#: The one top-level key a compiled export names its standalone synthesis primitive in. `rossSelinger` stamps nothing,
+#: so an export without this key IS the default -- identical to omission, on every route.
+PRIMITIVE_KEY = "submitted_primitive"
+#: The standing refusal of a compiled primitive export on the ordinary route, kept byte-identical.
+PRIMITIVE_EXPORT_REFUSAL = "compiled primitive synthesis is not admitted by this intake"
 
 
 def check_legacy_full_run_source(source: str) -> None:
@@ -268,6 +284,34 @@ def require_readout_epoch(model: Dict[str, Any]) -> None:
                                   f"qualified for {READOUT_EPOCH}; the submission was not examined")
 
 
+def require_primitive_epoch(model: Dict[str, Any]) -> None:
+    """The standalone primitive rule is qualified for ONE epoch, exactly as the measured readout rule is. A checkout
+    whose engine is at another epoch cannot rule on a primitive submission at all, so this is an operator-side stop and
+    NOT a verdict on the policy: `Incomplete` at stage `epoch`, which `scripts/ci/notify_submitters.js` (LIMIT_STAGES)
+    already reports to the submitter as incomplete/limits. Checked BEFORE `bind_compiled_primitive`, whose own epoch
+    `ValueError` would otherwise surface as `Refused("forshor", ...)` -- telling a participant their policy is wrong
+    when the engine checkout is the thing that does not match. Lane WU's precedent, applied to the second overlay."""
+    from export_v2.canon import epoch_of
+    from export_v2.primitive_overlay import EPOCH as PRIMITIVE_EPOCH
+    if epoch_of(model) != PRIMITIVE_EPOCH:
+        raise Incomplete("epoch", f"this checkout's engine is at epoch {epoch_of(model)} and the standalone primitive "
+                                  f"rule is qualified for {PRIMITIVE_EPOCH}; the submission was not examined "
+                                  "(an operator-side stop, not a verdict on the policy)")
+
+
+def bind_qualified_primitive(policy, printed: Dict[str, Any], lean_source: str) -> Dict[str, Any]:
+    """The standalone primitive evidence for a qualified export, derived HERE from the compiled document and the
+    submitted source by `primitive_overlay.bind_compiled_primitive` -- the document's own claim is never the proof.
+    A selector bound to another policy, another board or another verifier is refused and prices nothing.
+    Raises `Refused`."""
+    from export_v2.primitive_overlay import VERIFIER_PIN, bind_compiled_primitive
+    try:
+        return bind_compiled_primitive(policy, printed, verifier_pin=VERIFIER_PIN,
+                                       lean_source=lean_source.encode("utf-8"))
+    except ValueError as error:
+        raise Refused("forshor", str(error)) from error
+
+
 def bind_measured_readout(verification: Dict[str, Any], policy, printed: Dict[str, Any]) -> Dict[str, Any]:
     """The readout evidence for a qualified measured export, re-derived HERE from the compiled document and the
     submitted source. The receipt's own `localReadoutQualification.evidence` is never the proof: it is compared with
@@ -291,37 +335,54 @@ def bind_measured_readout(verification: Dict[str, Any], policy, printed: Dict[st
 
 
 def forshor_build(forshor_tree: Path, template: str, workdir: Path, timeout: int = 7200, kind: str = "pp", *,
-                  qualify_readout: bool = False) -> Dict[str, Any]:
+                  qualify_readout: bool = False, qualify_primitive: bool = False) -> Dict[str, Any]:
     """The Lean file as ForShor's template (`kind`: `pp` or `ptp`), in a disposable copy of the checkout: ForShor's lexical gate, its build, then the document its
     executable prints. Raises `Refused` at stage `lexical` or `forshor`; the file is only ever compiled, never run by us."""
     workdir = workdir.resolve()
     workdir.mkdir(parents=True, exist_ok=True)
     with exclusive_attempt(workdir / ".forshor-build.lock") as lock_fd:
-        return _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_readout, lock_fd)
+        return _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_readout, qualify_primitive, lock_fd)
 
 
-def _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_readout, lock_fd):
+def _pinned_verifier_or_refused(forshor_tree, template, pin: str, what: str) -> None:
+    """A qualification route compiles in the checkout its rule is PINNED to, and nowhere else: the checkout's HEAD must
+    equal `pin` and the tree must be clean, and the source must pass the trusted CI source gate before it is built.
+    Shared by the readout and primitive routes so the two cannot drift apart."""
+    actual = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=forshor_tree, text=True).strip()
+    dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=forshor_tree, text=True)
+    if actual != pin or dirty:
+        raise Refused("forshor", f"{what} requires a clean checkout of the pinned verifier")
+    source_gate = HERE.parent / "scripts" / "ci" / "policy_source.py"
+    checked = subprocess.run([sys.executable, str(source_gate), "--stdin"], input=template, text=True, capture_output=True)
+    if checked.returncode:
+        raise Refused("policy-source", checked.stderr.strip())
+
+
+def _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_readout, qualify_primitive, lock_fd):
     filename, targets, exe = FORSHOR_KINDS[kind]
+    if qualify_readout and qualify_primitive:
+        raise Refused("format", "a combined readout and primitive qualification is not admitted (asked for at the ForShor build)")
     if qualify_readout:
         from export_v2.readout_overlay import VERIFIER_PIN
         if kind != "pp":
             raise Refused("format", "readout qualification only supports PhaseProduct (asked for at the ForShor build)")
-        actual = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=forshor_tree, text=True).strip()
-        dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=forshor_tree, text=True)
-        if actual != VERIFIER_PIN or dirty:
-            raise Refused("forshor", "readout qualification requires a clean checkout of the pinned verifier")
-        source_gate = HERE.parent / "scripts" / "ci" / "policy_source.py"
-        checked = subprocess.run([sys.executable, str(source_gate), "--stdin"], input=template, text=True, capture_output=True)
-        if checked.returncode:
-            raise Refused("policy-source", checked.stderr.strip())
+        _pinned_verifier_or_refused(forshor_tree, template, VERIFIER_PIN, "readout qualification")
         exe = [*exe, "--readout", "submitted"]
+    if qualify_primitive:
+        # The standalone primitive is qualified on BOTH single-product boards (`primitive_overlay.BOARD_SCHEMA`), so
+        # unlike readout there is no `kind` restriction here. The pin is the primitive rule's own VERIFIER_PIN, the
+        # build the recorded qualification receipts were taken at; it is NOT the operational pin in
+        # `evaluation/policy-trees.json`, and the lane report records that divergence as a release handoff.
+        from export_v2.primitive_overlay import VERIFIER_PIN
+        _pinned_verifier_or_refused(forshor_tree, template, VERIFIER_PIN, "primitive qualification")
+        exe = [*exe, "--primitive", "submitted"]
     tree = workdir / "forshor-tree"
     if tree.exists():
         shutil.rmtree(tree)
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
     from tree_copy import copy_lean_tree
     copy_lean_tree(forshor_tree, tree)
-    if qualify_readout and (tree / ".git").is_file():
+    if (qualify_readout or qualify_primitive) and (tree / ".git").is_file():
         (tree / ".git").unlink()
     target = tree / "ForShor" / "ShorVerification" / "Submission" / filename
     if not target.parent.is_dir() or (kind == "ptp" and not (target.parent / "PTPPolicyCheck.lean").exists()):
@@ -351,7 +412,7 @@ def _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_reado
     if target.read_bytes() != source:
         raise RuntimeError("Policy.lean changed during the ForShor compile attempt")
     document = json.loads(printed.stdout)
-    if qualify_readout:
+    if qualify_readout or qualify_primitive:
         require_legacy_export(check_no_full_run_export, document)
     return document
 
@@ -363,19 +424,31 @@ def forshor_check(eng, P, forshor_tree: Path, workdir: Path, pin: str, timeout: 
 
 
 def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir: Path, timeout: int = 7200, *,
-                     qualify_readout: bool = False):
+                     qualify_readout: bool = False, qualify_primitive: bool = False):
     """A submitted `Policy.lean` (ForShor's PolicyTemplate format for PhaseProduct, its PTPPolicyTemplate format for PhaseTripleProduct, told apart by the namespace it
     declares) to (the policy as site policy JSON, ForShor's printed document). ForShor builds the file, so the document is the policy it kernel-checked; the boards then
     check the same tables in the STO mirror and price them. Only exact widths and the default negation are priced, so a file that asks for anything else is refused
-    rather than priced as something it is not."""
+    rather than priced as something it is not.
+
+    `qualify_primitive` is the separate NONPUBLISHING standalone-primitive route (owner-authorised 2026-11-24). On it,
+    and only on it, `submittedPrimitive` is not refused and a compiled `submitted_primitive` export is admitted, to be
+    bound and priced by `export_v2.primitive_overlay`. Every other route keeps both refusals byte-identical, and the
+    explicit default is identical to omission on all of them."""
     if len(lean_text.encode()) > MAX_LEAN_BYTES:
         raise Refused("format", f"the Lean file is larger than {MAX_LEAN_BYTES} bytes")
+    if qualify_readout and qualify_primitive:
+        # Each overlay re-prices the standalone circuit from the same frozen census and returns a FINAL price, and
+        # `primitive_overlay.bind_compiled_primitive` refuses a measured document from the other end. The pair has
+        # never had a defined price anywhere in this pipeline, so it is refused rather than priced on a guessed
+        # precedence -- the same call WY made for readout + design.
+        raise Refused("format", "a combined measured readout and primitive qualification is not admitted")
     try:
         check_legacy_full_run_source(lean_text)
     except ValueError as error:
         raise Refused("format", str(error)) from error
     kind = lean_kind(lean_text)
-    refuse_unqualified_primitive(lean_text)
+    if not qualify_primitive:
+        refuse_unqualified_primitive(lean_text)
     if qualify_readout and kind != "pp":
         raise Refused("format", "readout qualification only supports PhaseProduct (asked for at intake)")
     if not qualify_readout:
@@ -383,10 +456,18 @@ def policy_from_lean(eng, lean_text: str, forshor_tree: Optional[Path], workdir:
     if forshor_tree is None:
         raise RuntimeError("a Lean policy needs ForShor's build, and no ForShor checkout was given (--forshor-tree)")
     doc = forshor_build(forshor_tree, lean_text, workdir, timeout, kind=kind,
-                        **({"qualify_readout": True} if qualify_readout else {}))
-    if "submitted_primitive" in doc:
-        raise Refused("format", "compiled primitive synthesis is not admitted by this intake")
-    require_legacy_export(check_no_full_run_export if qualify_readout else check_coherent_export, doc)
+                        **({"qualify_readout": True} if qualify_readout else {}),
+                        **({"qualify_primitive": True} if qualify_primitive else {}))
+    if PRIMITIVE_KEY in doc and not qualify_primitive:
+        raise Refused("format", PRIMITIVE_EXPORT_REFUSAL)
+    # The route picks the checker, as it already does for readout. A primitive export carries the selector the
+    # coherent checker has no opinion on, but it must still name no full-run selection and -- when it names NO
+    # primitive at all, which is what the explicit default compiles to -- it is the plain coherent export and gets the
+    # coherent checker, so the default path is identical to omission here too.
+    if qualify_primitive and PRIMITIVE_KEY in doc:
+        require_legacy_export(check_no_full_run_export, doc)
+    else:
+        require_legacy_export(check_no_full_run_export if qualify_readout else check_coherent_export, doc)
     bands = doc["bands"]
     check_band_limit(bands)
     if not bands:
@@ -439,7 +520,7 @@ def check_summary(summary: Optional[str], lean_policy: Optional[str]) -> None:
 def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, summary: Optional[str] = None, login: str, url: Optional[str] = None, token: str = "local", tree: Path, workdir: Path,
                       forshor_tree: Optional[Path] = None, stage_timeout: Optional[int] = None, mirror_timeout: int = 7200,
                       run_mirror_fn: Optional[Callable[..., Dict[str, Any]]] = None, python: str = sys.executable,
-                      qualify_readout: bool = False, publishing: bool = False,
+                      qualify_readout: bool = False, qualify_primitive: bool = False, publishing: bool = False,
                       log: Callable[[str], None] = lambda s: print(s, flush=True)) -> Dict[str, Any]:
     """Everything up to the publish: the reserved handle and (when a publisher URL is given) the epoch, then ForShor's gate and build (a Lean submission), the STO mirror
     and ForShor's check. Returns the verification: the policy, ForShor's printed document, the mirror's envelope and the model it was verified under, as data a trusted
@@ -447,7 +528,8 @@ def verify_submission(policy_doc: Any, *, lean_policy: Optional[str] = None, sum
     workdir.mkdir(parents=True, exist_ok=True)
     with exclusive_attempt(workdir / ".verification.lock"):
         return _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree, workdir, forshor_tree,
-                                  stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, publishing, log)
+                                  stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout,
+                                  qualify_primitive, publishing, log)
 
 
 def _run_mirror_or_incomplete(run, policy_json, board, tree, out_dir, **kw):
@@ -465,7 +547,8 @@ def _run_mirror_or_incomplete(run, policy_json, board, tree, out_dir, **kw):
 
 
 def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree, workdir, forshor_tree,
-                       stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, publishing, log):
+                       stage_timeout, mirror_timeout, run_mirror_fn, python, qualify_readout, qualify_primitive,
+                       publishing, log):
     from export_v2 import engine, epoch
     from export_v2.canon import policy_digest
     from export_v2.evidence import run_mirror, stomirror_from_envelope
@@ -474,6 +557,13 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
         # `publishing`: `run_intake` verifies and publishes in ONE trusted run, so there the publisher URL is the
         # publisher it is about to publish to. A bare `--qualify-readout --no-publish` still touches no network.
         raise Refused("format", "readout qualification is local only and requires Policy.lean")
+    if qualify_primitive and (lean_policy is None or url):
+        # NO publishing arm, deliberately, and this is the difference from readout. The standalone primitive route has
+        # always been described as nonpublishing (`scripts/ci/policy_source._SELECTOR_CAUSES`, `docs/CLI.md`), the
+        # recorded qualification receipts carry `localOnly: true` / `publishable: false`, and the site contract has no
+        # field for a primitive price on either the row or the panel -- so there is no publisher to talk to and a URL
+        # is refused outright rather than silently ignored.
+        raise Refused("format", "primitive qualification is local only and requires Policy.lean")
     check_summary(summary, lean_policy)                         # a rule of the summary file first: cheap, and not a verdict on the policy
     eng = engine.load()
     model = epoch.model_of()
@@ -489,11 +579,22 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
     if lean_policy is not None:                                 # a Lean submission: ForShor builds it, its printed document is the policy
         log("ForShor's lexical gate, build and printed document (the submitted Lean file) ...")
         policy_doc, printed = policy_from_lean(eng, lean_policy, forshor_tree, workdir,
-                                               **({"qualify_readout": True} if qualify_readout else {}))
+                                               **({"qualify_readout": True} if qualify_readout else {}),
+                                               **({"qualify_primitive": True} if qualify_primitive else {}))
     policy_json = normalise(policy_doc)
     digest = policy_digest(policy_json)
     board = "ptp" if policy_json["mode"] == eng.tables.TRIPLE else "pp"
     P = eng.tables.Policy.from_json(policy_json)
+    primitive = None
+    if qualify_primitive:
+        if PRIMITIVE_KEY in printed:
+            require_primitive_epoch(model)                      # an operator-side epoch stop is not this policy's fault
+            primitive = bind_qualified_primitive(P, printed, lean_policy)
+            pass
+        else:
+            # No selector in the compiled export IS the default: `.rossSelinger` stamps nothing, so this is the plain
+            # coherent policy and is checked and priced exactly as an ordinary submission is (owner ruling a4a7609).
+            require_coherent_export(printed)
     readout = None
     if qualify_readout:
         from export_v2.readout_overlay import MEASURED_SCHEMA, VERIFIER_PIN, bind_compiled_readout
@@ -525,6 +626,11 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
     if readout is not None:
         forshor = None
         log("  verified the compiled readout and checked its reference arithmetic census")
+    elif primitive is not None:
+        # A standalone primitive proof claims no coherent IR agreement: `forshor_record` prices the document's own IR
+        # against the coherent single-run cost, and a primitive export's phase sites are not that circuit.
+        forshor = None
+        log(f"  bound the compiled {primitive['primitive']} primitive on the {primitive['board']} board (local qualification only)")
     elif printed is not None and str(printed.get("schema", "")).startswith("forshor.ptp-"):
         log("  ForShor kernel-checked the PhaseTripleProduct policy (it has no IR, so the row carries no ForShor record)")
         forshor = None
@@ -544,6 +650,12 @@ def _verify_submission(policy_doc, lean_policy, summary, login, url, token, tree
            "envelope": envelope, "forshor": forshor, "model": model, "login": login, "createdAt": _now()}
     if qualify_readout:
         out["localReadoutQualification"] = {"mode": selected, "evidence": readout}
+    if qualify_primitive:
+        # `primitive` is the DEFAULT name when the export named no selector, so the receipt states the default
+        # explicitly rather than leaving a reader to infer it from an absent key.
+        from export_v2.primitive_overlay import DEFAULT_PRIMITIVE
+        out["localPrimitiveQualification"] = {"primitive": primitive["primitive"] if primitive else DEFAULT_PRIMITIVE,
+                                              "evidence": primitive}
     if lean_policy is not None:                                 # what the archive stores; the publish job compares it with the file at the PR's head commit
         out.update(leanSource=lean_policy, leanSha256=hashlib.sha256(lean_policy.encode()).hexdigest())
     if summary is not None:                                     # data only: nothing above read it, so it cannot have changed the digest or the verdict
@@ -627,6 +739,19 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
                 raise Incomplete("publisher", str(error)) from error
             log(f"  trusted origin: artifact {trusted_origin['artifact']} of run {trusted_origin['runId']} "
                 f"attempt {trusted_origin['runAttempt']}, at this checkout's verification fingerprint")
+    # RETAINED, and NOT lifted with the source gate (owner-authorised 2026-11-24). The standalone primitive route is
+    # nonpublishing, which is what it has always promised: the recorded qualification receipts carry
+    # `localOnly: true` / `publishable: false`, and the site's `rowSchema` and `policyPanelSchema` are Zod
+    # strictObjects with no field for a primitive price or its kind -- so a primitive-bearing entry cannot be
+    # represented, let alone ranked. Both halves are guarded, because either alone would be enough to publish a
+    # standalone price as if it were the plain one: the receipt's qualification key AND the compiled selector.
+    #
+    # Integration XQ: XG wrote this beside the blanket readout refusal it branched on; XH then replaced that refusal
+    # with the trusted-origin establishment above. The two are independent -- readout origin vs primitive
+    # publishability -- so both survive, in XG's original relative order. The primitive route gains no origin arm
+    # because it never publishes at all.
+    if "localPrimitiveQualification" in v or (isinstance(printed, dict) and PRIMITIVE_KEY in printed):
+        raise Refused("format", "primitive qualification is local only; publishing is not enabled")
     selection, design = compiled_full_run(printed) if measured else (None, None)
     if isinstance(printed, dict):
         # The route picks the checker, as `policy_from_lean` already does at the compile step: a measured export
@@ -792,6 +917,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--verification-out", type=Path, help="with --no-publish: where to write the verification (default: WORKDIR/verification.json)")
     ap.add_argument("--qualify-readout", action="store_true", help="compile PhaseProduct readout at the operational verifier pin. With --no-publish this is local only and takes no "
                     "publisher URL; with a publisher URL and --pull it verifies and publishes in one trusted run (the only route that may publish a measured readout)")
+    ap.add_argument("--qualify-primitive", action="store_true", help="LOCAL ONLY, and it never publishes: compile and price a standalone synthesis primitive (catalyticB2, adaptiveB3) on the PhaseProduct or PhaseTripleProduct board, at the primitive rule's own pinned verifier. Requires --no-publish and --lean-policy, and takes no publisher URL; the result gets no score and the publisher refuses it")
     ap.add_argument("--organizer-baseline", choices=["baseline-gpt", "baseline-claude", "baseline-gpt-6.2-sol", "baseline-claude-opus-5-5", "baseline-gpt-6.2-sol-medium", "baseline-claude-opus-5-5-medium"], help="Display identity assigned by trusted publication CI")
     ap.add_argument("--publish-from", type=Path, help="price and publish a verification written by --no-publish (the trusted half of CI): no Lean runs, and everything in it is checked again")
     ap.add_argument("--login", required=True, help="the submitter's GitHub handle (the PR author)")
@@ -819,6 +945,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             ap.error("--qualify-readout requires --lean-policy")
         if a.no_publish and a.publisher_url:
             ap.error("--qualify-readout with --no-publish is local only: it takes no publisher URL")
+    if a.qualify_primitive:
+        # Unlike --qualify-readout there is no single-trusted-run publishing arm: the route is nonpublishing, so the
+        # flag combination that would publish is refused by the parser rather than later by the publisher.
+        if a.qualify_readout:
+            ap.error("--qualify-primitive and --qualify-readout are separate qualification routes and do not combine")
+        if a.lean_policy is None:
+            ap.error("--qualify-primitive requires --lean-policy")
+        if not a.no_publish:
+            ap.error("--qualify-primitive never publishes: it requires --no-publish")
+        if a.publisher_url:
+            ap.error("--qualify-primitive is local only: it takes no publisher URL")
     if a.publish_from is not None:
         if a.no_publish:
             ap.error("--publish-from publishes: it cannot be combined with --no-publish")
@@ -885,7 +1022,8 @@ def _run_args(a, ap, verification_path):
             source = a.lean_policy.read_bytes().decode("utf-8") if a.lean_policy else None
             v = verify_submission(json.loads(a.policy.read_text()) if a.policy else None, lean_policy=source, summary=summary_text, login=a.login,
                                   url=a.publisher_url, token=token, tree=a.tree, workdir=a.workdir, forshor_tree=a.forshor_tree, stage_timeout=a.stage_timeout,
-                                  mirror_timeout=a.mirror_timeout, **({"qualify_readout": True} if a.qualify_readout else {}))
+                                  mirror_timeout=a.mirror_timeout, **({"qualify_readout": True} if a.qualify_readout else {}),
+                                  **({"qualify_primitive": True} if a.qualify_primitive else {}))
             write_receipt(verification_path, v)
             result = {"verified": True, "verification": str(verification_path), "policy": {"digest": v["digest"], "mode": v["mode"], "bands": len(v["policy"]["bands"]),
                       "stoMirror": True, "forshorPolicy": bool(v["forshor"]), "forshorChecked": v["printed"] is not None}}

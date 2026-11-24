@@ -52,6 +52,43 @@ def build_measured_request(policy_json: Dict[str, Any], *, compiled, verifier_pi
                           primitive_from=primitive_from, **request_args)
 
 
+def build_primitive_request(policy_json: Dict[str, Any], *, compiled, verifier_pin, lean_source, preparation=None,
+                            model, **request_args) -> Dict[str, Any]:
+    """Local standalone-primitive qualification only: this entry point grants no publication authority, and the
+    production publish path has no caller for it (`intake_v2.publish_verification` refuses a primitive outright).
+
+    The compiled `submitted_primitive` selector is BOUND here -- by `primitive_overlay.bind_compiled_primitive`,
+    against the document and the submitted source -- before anything is priced, so a selector bound to another policy,
+    another board or another verifier prices nothing. The policy is then priced on its OWN single-product board alone:
+    the full order-finding board takes no primitive, so a primitive request must not carry it (the overlay refuses the
+    full board by name, and `price_views` hooks the overlay into the single-product branch only; without this the full
+    row would be published as if the standalone option had been honoured).
+
+    `preparation` is the attested catalyst words KEYED BY DELTA (`{"1e-2": {...}, ...}`), or None for a primitive that
+    prepares no catalyst. It is per-delta because the uniform catalyst width b is a function of delta
+    (`primitive_overlay.uniform_b`: the per-site rounding over every site must fit half the rotation pool), so one
+    bank cannot serve four precisions -- the recorded qualification ledger attests one bank per delta for exactly this
+    reason. A delta with no attested bank is not quietly priced at the default: the overlay refuses, because
+    catalyticB2 with `preparation=None` fails its "one word per resolution 4..b" check. adaptiveB3 measures and resets,
+    so it attests none at any delta and is refused if offered one."""
+    from intake_v2 import check_legacy_full_run_source, require_primitive_epoch
+    from policy_options import check_no_full_run_export
+    from .primitive_overlay import bind_compiled_primitive
+
+    check_legacy_full_run_source(lean_source.decode("utf-8"))
+    check_no_full_run_export(compiled)
+    # An engine at another epoch cannot rule on a primitive submission at all. That is an OPERATOR-side stop
+    # (`Incomplete` at stage `epoch`, lane WU's precedent) and not a verdict on the policy, and it is checked here --
+    # before the binding, whose own epoch `ValueError` would surface as a refusal of the participant's file.
+    require_primitive_epoch(model)
+    eng = engine.load()
+    policy = eng.tables.Policy.from_json(policy_json)
+    selection = compiled["submitted_primitive"]
+    primitive = bind_compiled_primitive(policy, compiled, verifier_pin=verifier_pin, lean_source=lean_source)
+    return _build_request(policy_json, model=model, primitive=selection, preparation=preparation,
+                          primitive_evidence=primitive, **request_args)
+
+
 def build_coherent_variant_request(policy_json: Dict[str, Any], *, model, primitive_from, **request_args) -> Dict[str, Any]:
     """Local inverse-order rehearsal: add coherent full pricing without replacing the primitive."""
     from .readout_overlay import EPOCH
@@ -129,7 +166,8 @@ def rehearse_qualified_request(receipt, *, source: bytes, compiled_sha256, index
 
 def _build_request(policy_json, *, model, store, head_sha, pull_number, github_login, run_id, submitted_at, evaluated_at,
                    archive_commit, accepted_ids, evaluation_key, base_generation, number, forshor=None,
-                   readout=None, full_run=None, primitive_from=None, log=lambda s: None):
+                   readout=None, full_run=None, primitive_from=None, primitive=None, preparation=None,
+                   primitive_evidence=None, log=lambda s: None):
     # First, before any evidence lookup or any pricing: a compiled selection this pipeline cannot convert is
     # reported, never priced as the default, and no part of a request is built for it. A selection that DOES
     # convert is threaded to the pricing loop below, at `mapping.DESIGN_DELTA` and nowhere else: the QFT design
@@ -144,7 +182,14 @@ def _build_request(policy_json, *, model, store, head_sha, pull_number, github_l
     if primitive_from is not None and (not isinstance(primitive_from, str) or not re.fullmatch(r"[0-9a-f]{40}", primitive_from)
                                         or primitive_from == head_sha or primitive_from not in accepted_ids):
         raise ValueError("a full-only variant needs a different accepted primitive entry")
+    if primitive and primitive_from:
+        raise ValueError("a standalone primitive and a full-only variant of a prior entry are different submissions")
     boards = ["full"] if primitive_from else boards_for(policy.mode)
+    if primitive:
+        # The standalone board alone. `boards_for` adds `full` for a PhaseProduct policy, and the full order-finding
+        # board takes no primitive at all, so including it would publish the plain coherent run beside a standalone
+        # price -- announcing the default as if the option had been honoured on the whole run.
+        boards = ["pp" if policy.mode == eng.tables.PAIR else "ptp"]
     mirror_board = "ptp" if "ptp" in boards else "pp"
     mirror, why = store.stomirror(policy_json, model, mirror_board)
     if mirror is None:
@@ -154,13 +199,24 @@ def _build_request(policy_json, *, model, store, head_sha, pull_number, github_l
         if forshor is not None:
             raise ValueError("measured proof must not claim coherent IR agreement")
         verification["readout"] = readout
+    if primitive_evidence is not None:
+        if forshor is not None or readout:
+            raise ValueError("a standalone primitive proof claims no coherent IR agreement and no measured readout")
+        verification["primitive"] = primitive_evidence
     epoch = epoch_of(model)
     pr_url = f"https://github.com/{SUBMISSIONS_REPO}/pull/{pull_number}"
     priced = []
     for delta in mapping.DELTA_KEYS:
         views = pricing.price_views(policy, f"Submission {head_sha[:12]}", delta, boards,
                                     **({"measured": True} if readout else {}),
-                                    **({"design": design} if design and delta == mapping.DESIGN_DELTA else {}))
+                                    **({"design": design} if design and delta == mapping.DESIGN_DELTA else {}),
+                                    # Unlike the QFT design, the standalone primitive is qualified at every delta the
+                                    # boards publish, so it is passed to all four -- but with THIS delta's own
+                                    # attested catalyst bank, because the uniform catalyst width moves with delta.
+                                    # With no primitive no keyword is passed at all -- the exact call 792464f made --
+                                    # so a default request's bytes cannot move.
+                                    **({"primitive": primitive,
+                                        "preparation": (preparation or {}).get(delta)} if primitive else {}))
         for board in boards:
             log(f"priced {board} {delta}")
             detail = mapping.panel_path(epoch, head_sha, board, delta)

@@ -189,10 +189,20 @@ def test_every_shipped_route_still_reaches_the_default_gate():
                   if isinstance(node, ast.Name) and node.id == "check_no_full_run_export"]
     # build_measured_request and rehearse_qualified_request, plus forshor_record, the readout-qualification
     # output and the compiled-pricing route. Every one of them must still be on the DEFAULT gate.
-    assert sites.count("evaluation/export_v2/request.py") == 2, sites
+    #
+    # Lane XG, 2026-11-24: `build_primitive_request` is a THIRD site here -- the local standalone-primitive pricing
+    # entry point, which runs the gate on its compiled export before binding anything. It is the DEFAULT gate, so
+    # the invariant this test protects is intact and only the expected count moved.
+    assert sites.count("evaluation/export_v2/request.py") == 3, sites
     # Integration 2026-11-24 (lane XE): WQ's publication-gate lift added a FOURTH intake site,
     # `publish_verification`'s measured arm (intake_v2.py:613), which rules on a measured export that names a
     # selection this checkout has no converter for. It is the DEFAULT gate, so the invariant this test exists to
     # protect is intact and only the expected count moved; `test_the_opt_in_is_wired_into_no_route` above still
     # pins `allow_qualified_full_run_export` to zero callers.
-    assert sites.count("evaluation/intake_v2.py") == 4, sites
+    #
+    # Lane XG, 2026-11-24: the standalone-primitive gate lift added a FIFTH intake site. `policy_from_lean` now
+    # picks its export checker by route -- a compiled primitive export gets `check_no_full_run_export` (it carries a
+    # selector the coherent checker has no opinion on, but it must still name no full-run selection) and every other
+    # route keeps the checker it had, so the conditional reads the same name twice. The `_forshor_build` site is
+    # unchanged and now covers the primitive route too. All five are the DEFAULT gate.
+    assert sites.count("evaluation/intake_v2.py") == 5, sites
