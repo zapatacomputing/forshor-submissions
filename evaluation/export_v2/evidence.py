@@ -1,6 +1,6 @@
 """Policy-level evidence, converted from harness records into the contract's `Verification`.
 
-Rules (the validators in forshor-site enforce the same on the other side):
+Rules (the publisher's validators enforce the same on the other side, so breaking one here is rejected there, not ignored):
   * evidence is for ONE policy (its digest), so a record can never vouch for another;
   * a record counts only if the harness accepted it, at exact widths, at the model's width, for the same bands, on the exact
     policy file the envelope names;

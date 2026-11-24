@@ -36,8 +36,7 @@ for_a_design` pins that, so nobody re-adds the engine-side call.
 EVERY PROFILE LABEL REFUSES; THE EXPLICIT DESIGN IS WHAT SHIPS (integration wave 2, lane XF).
 `full_run_design` once converted three of the seven profiles to a bare per-family mapping. Lane WR found
 that this DROPPED the multiplier topology: all seven non-reference profiles select `modmul` =
-`quotient_stream` or `split_compare` (`audit_native_fullrun.py:25-30`, QFT-SURFACE-MAPPING.md section 1.1),
-the topology drives both the T cost (`policy_design.py:139-142`) and the qubit base (`:160-162`), and
+`quotient_stream` or `split_compare`, the topology drives both the T cost and the qubit base, and
 `qft_overlay.project` substitutes QFT sites into the engine's frozen REFERENCE census and has no topology
 parameter at all. Converting a profile therefore priced a quotientStream run on reference-topology numbers
 -- reporting the reference price as if the option had been honoured, the one silent default this release
@@ -45,7 +44,7 @@ forbids. WR's TOPOLOGY GATE refuses it instead, by name.
 
 The owner has DROPPED quotient customization from this release (deferred), so this is settled policy, not a
 gap: every `quotient-*` and every `split-*` profile label REFUSES. What ships is the EXPLICIT per-family
-design on the reference topology (`full_run_design`'s second path, `Design.json`'s wire shape), which
+design on the reference topology (`full_run_design`'s second path, the research record's wire shape), which
 prices any combination of the four QFT families. The tests below that need a real design to thread are
 therefore stated against the explicit path; `test_every_profile_label_refuses_and_the_explicit_design_prices`
 states the position as a fact rather than leaving it to be discovered.
@@ -98,13 +97,13 @@ REFUSED_BY_DESIGN = ("quotient-fallback-data-catalytic-work", "quotient-step2-fa
 #: No profile label prices in this release. Kept as an explicit empty tuple so the fact is stated, not implied.
 PRICES = ()
 
-#: The per-family choices the explicit path carries, in `QftChoice.json`'s shape (`Gate5Design.lean:39-44`).
+#: The per-family choices the explicit path carries, in the research record's per-family choice shape.
 RS_EXACT = {"backend": "ross_selinger", "target": "exact"}
 BANDED = {"backend": "ross_selinger", "target": "approximate", "max_error": "25e-5"}
 
 #: The compiled document the verifier prints for a non-reference profile: the measured (semiclassical) schema,
-#: because `PolicyMain.lean:444-447` refuses a full-run selection unless the saved readout IS semiclassical,
-#: plus the selection object `PolicyMain.lean:462-465` merges in.
+#: because `PolicyMain.lean` refuses a full-run selection unless the saved readout IS semiclassical,
+#: plus the selection object it merges in.
 MEASURED_SCHEMA = "forshor.policy-submission-semiclassical/v1"
 
 
@@ -117,7 +116,7 @@ def document(profile=None):
 
 def explicit_document(qft, modmul="reference"):
     """The compiled document carrying an EXPLICIT per-family design BODY -- `full_run_design`'s second path,
-    in `Gate5Design.Design.json`'s wire shape, inside the envelope the recorded exports already use.
+    in the research record's wire shape, inside the envelope the recorded exports already use.
 
     This is the path that prices in this release. Every profile LABEL refuses on its multiplier topology
     (lane WR), so the chain tests that need a design to thread drive it from here instead."""

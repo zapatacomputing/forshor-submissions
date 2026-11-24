@@ -1,5 +1,6 @@
 """Needs the vendored engine and its Python environment: python -m pytest export_v2/pytests -q --runslow  (from evaluation/).
-Cross-language validation additionally needs FORSHOR_SITE_DIR (a forshor-site checkout with node_modules) and node."""
+Cross-language validation additionally needs FORSHOR_SITE_DIR (a publisher checkout with node_modules) and node; it is
+optional and skips when that variable is unset."""
 import json
 import os
 import subprocess

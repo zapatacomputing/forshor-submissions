@@ -1,12 +1,12 @@
 # export_v2: the engine's output as contract-v2 documents
 
-Design and contract: `contracts/v2/DESIGN.md` in `zapatacomputing/forshor-site` (branch `contracts/v2-design`; unmerged).
-This package is the Python half of "engine -> contract". It is **not wired into any workflow**.
+This package is the Python half of "engine -> contract". It is **not wired into any workflow**. What the contract requires of
+these documents is pinned by the tests in `pytests/`, which are the authority relied on here.
 
 It produces ledger-level inputs only: the model, rows **without ranks**, benchmarks, reference curves, panels and evidence.
-Ranks, boards, the dashboard and the snapshot id are derived by forshor-site's one shared implementation (`assembleSnapshot`),
-so there is no second ranking in Python. `mapping.py` is the twin of forshor-site's `scripts/fixture-v2.ts`; a golden test
-checks it reproduces that builder's panels exactly from the same real engine views.
+Ranks, boards, the dashboard and the snapshot id are all derived downstream by a single shared implementation on the
+publisher side, so there is no second ranking in Python. `mapping.py` builds the same panels as the publisher's own fixture
+builder from the same real engine views; `pytests/test_mapping.py` is the golden test that holds the two equal.
 
 Run from `evaluation/` with the vendored engine's Python environment (`evaluation/engine/requirements.txt`, Python 3.12):
 
@@ -15,9 +15,10 @@ python -m export_v2 evidence-needed OUT_DIR                      # which planner
 python -m export_v2 run-mirror OUT_DIR --tree PATH               # run that tree's harness on them (needs a BUILT Lean tree)
 python -m export_v2 epoch-input OUT.json --publisher-commit SHA --evidence-dir OUT_DIR
 python -m export_v2 request OUT.json --policy FILE --evidence-dir DIR --head-sha ... --pull N ...   # one submission
-# validate with the code the publisher and browser use (in forshor-site):
-npx tsx scripts/publisher/validate-v2.ts OUT.json
 ```
+
+A maintainer with a publisher checkout can additionally validate an output document against the publisher's own validator;
+that cross-language check is driven from this repository by `pytests/test_engine_backed.py` (see **Tests** below).
 
 ## Negation: what the epoch field `negation` means
 
@@ -58,8 +59,8 @@ about the policy, and only the rotation-synthesis price depends on delta.
 ## STO mirror evidence at ForShor 21e129a (2026-11-08)
 
 All 15 distinct listed policies were run through the interim STO fork's harnesses (`check_banded_policy.py`, `check_ptp_policy.py`, `--widths exact`) at the epoch's pins: Lean
-4.36.0-rc1, ForShor `21e129a` (the merge of PR #80, on top of PR #79), STO base `361e81e`. The fork is `courtneyjzapata/ShorTableOptimization_temp`, branch `port/forshor-21e129a`
-(`349017d`, not pushed). The envelopes (policy, record, evidence; no logs) are archived in `evidence-archive/494185cf666f9752/` (the first 13, and the timed-out record of `48063efa`) and, for all 15 accepted, in `evidence-archive/7a11b2b8b6d68718/` (the current epoch).
+4.36.0-rc1, ForShor `21e129a` (the merge of PR #80, on top of PR #79), STO base `361e81e`. Those three pins are what makes the
+evidence valid, and an epoch fixes them. The envelopes (policy, record, evidence; no logs) are archived in `evidence-archive/494185cf666f9752/` (the first 13, and the timed-out record of `48063efa`) and, for all 15 accepted, in `evidence-archive/7a11b2b8b6d68718/` (the current epoch).
 
 | Policy | Ladder (threshold, k) | Result | Report stage |
 | --- | --- | --- | --- |
@@ -81,8 +82,8 @@ expect long checks for large first bands; the PhaseTripleProduct k = 8 policy di
 certificate that follows takes 10 to 25 s even at k = 8 (it recomputes `ladderX` itself: `ladder_exact ... := by decide +kernel`). With `--fast` the fork's `check_ptp_policy.py` skips the report, takes the exact ladder from `ptp_exact_width`
 (Python, milliseconds, an untrusted oracle) and lets the certificate prove it, so a wrong ladder or a failed threshold rule makes the certificate fail to build. Measured on the k = 5 baseline: 39 s against about 820 s, the same 19 audited
 theorems with the same statements and axioms, the same `ptp_peak_qubits`. `48063efa` and `c733baf3` were accepted this way (about a minute each). What `--fast` does not produce: the report's census and formula numbers (diagnostics; the gate-level census
-theorems are in the certificate) and the specific threshold-rejection reason (the certificate simply does not build). A false reject would mean a Python/Lean disagreement; the default path is the fallback. The flag is in the fork's branch
-`harness/ptp-fast-report`; the PhaseProduct harness has no such option and still takes hours at k = 8.
+theorems are in the certificate) and the specific threshold-rejection reason (the certificate simply does not build). A false reject would mean a Python/Lean disagreement; the default path is the fallback. At the time of these runs the flag
+existed only on the mirror's PhaseTripleProduct harness; the PhaseProduct harness had no such option and still took hours at k = 8.
 
 **PhaseProduct `--fast` (added 2026-11-09).** The same flag now exists on `scripts/check_banded_policy.py` (exact mode only; default off). Why the report stage is slow: a `State` is a function `Fin k → Fin k → Int` and every operation wraps the previous state in another closure; Lean's interpreter never memoises them, so evaluating a table's `check` doubles in cost about every 10 operations (one k = 8, 181-operation table: 1 ms after 16 operations, 76 ms after 80, 3.3 s after 120, 30 s after 160, 83 s after 168), and the report evaluates it per band, again inside `P.check`, and again for the chain. The kernel shares sub-terms, so the certificate takes 15 to 25 s regardless. With `--fast` the exact ladder comes from `scripts/exact_width.py` (an untrusted Python transcription of `Tight.lean`) and the certificate re-proves it (`exact_ladder`, `exact_ladder_at_target`, `chain_contracts_tight`) with `accepted` (every band's table contract). Measured on a scratch copy of the epoch's tree: `80132d41` (bands 8, 4, 3; 2.4 h in the report stage) accepted in 2 min 14 s with the same ladder as its earlier evidence; `7df40770` full and fast runs agree on the verdict, the ladder and every shared theorem (same statements and axioms); a deliberately wrong Python ladder (517 -> 516) is rejected at the certificate (`(kernel) application type mismatch` on the `exact_ladder` theorems). What `--fast` does not produce: the scan ladder and the advisory `bands_contract` theorem, and the report's named-band early rejections (a failed threshold rule is still named, by the Python mirror, once the kernel has rejected it).
 
@@ -100,8 +101,10 @@ infrastructure failure and re-run it):
 
 ```sh
 python -m pytest export_v2/pytests -q                       # no engine needed (mapping, evidence rules, stub harness)
-FORSHOR_SITE_DIR=/path/to/forshor-site python -m pytest export_v2/pytests -q --runslow    # prices a real policy, validates in TypeScript
+python -m pytest export_v2/pytests -q --runslow             # prices a real policy
 ```
+`--runslow` additionally runs the cross-language validation in `pytests/test_engine_backed.py` when `FORSHOR_SITE_DIR` points at a
+publisher checkout with `node_modules`, and skips it otherwise; it is optional and nothing in this repository depends on it.
 The tests live in `pytests/` (no `__init__.py`) on purpose: CI's `python -m unittest discover -s evaluation` runs in the pinned
 Qualtran 0.7.0 environment and must not import the vendored engine.
 
@@ -121,4 +124,4 @@ python -m export_v2 run-mirror OUT --kmy-only --fast --tree BUILT_TREE          
 python -m export_v2 epoch-input epoch-input.json --kmy-only --publisher-commit SHA --archive-commit SHA --updated-at ISO --evidence-dir OUT
 ```
 
-Both policies were accepted by the mirror (envelopes in `evidence-archive/ab1f8887b1b50e56/`). The seed is validated with the site's `scripts/publisher/seed-v2.ts`.
+Both policies were accepted by the mirror (envelopes in `evidence-archive/ab1f8887b1b50e56/`). The seed document is validated once more by the publisher before release.
