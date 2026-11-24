@@ -38,6 +38,8 @@ from __future__ import annotations
 import io
 import json
 import os
+import urllib.parse
+import urllib.request
 import zipfile
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional
@@ -65,6 +67,32 @@ MAX_MEMBER_BYTES = 8 * 1024 * 1024
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 
 REPOSITORY = "zapatacomputing/forshor-submissions"
+
+
+class _StripAuthOnRedirect(urllib.request.HTTPRedirectHandler):
+    """Keep the publish job's `GH_TOKEN` out of a redirect it did not intend, in the two ways stock urllib allows it.
+
+    Integration XQ: carried across from the superseded `ebf21b0`, the one control that branch had and lane XN's
+    transport did not. It is not hypothetical hardening -- both holes are in CPython 3.12's own defaults:
+
+      * `HTTPRedirectHandler.redirect_request` copies every header except `content-length`/`content-type` onto the
+        new request, so `Authorization: Bearer <GH_TOKEN>` is carried to WHATEVER host the redirect names; and
+      * `http_error_302`'s scheme allowlist is `('http', 'https', 'ftp', '')`, so a redirect may DOWNGRADE off TLS
+        and send that header in cleartext.
+
+    So a 302 from the API to another host would hand the trusted publish job's credential away. The token is the one
+    input here that is neither re-derived nor compared, so losing it is not something a later comparison can catch.
+    Refusing the downgrade outright (returning None) and dropping the header on any cross-host hop closes both.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urllib.parse.urlsplit(newurl).scheme != "https":
+            return None                                   # never downgrade off TLS
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and (urllib.parse.urlsplit(newurl).hostname
+                                != urllib.parse.urlsplit(req.full_url).hostname):
+            new.remove_header("Authorization")
+        return new
 
 
 class OriginUnavailable(RuntimeError):
@@ -147,12 +175,19 @@ def urllib_opener(token: str, *, timeout: int = 30, urlopen: Optional[Callable[.
     that the token is a header and not part of the URL, that the response is read under `MAX_RESPONSE_BYTES`, and
     that a transport failure reaches `github_fetcher` as a failure (which it turns into `OriginUnavailable`, never a
     verdict). WHAT IS STILL UNPROVEN AND IS GATE B4: a real HTTPS request to api.github.com. No test makes one.
+
+    The URL must be HTTPS and redirects go through `_StripAuthOnRedirect`, so the token cannot leave TLS or reach
+    another host (integration XQ, carried across from the superseded `ebf21b0`). The default transport is therefore
+    a built opener rather than bare `urlopen`; injecting `urlopen` replaces it, which is what the offline tests do.
     """
-    import urllib.request
     request_for = build or urllib.request.Request
-    send = urlopen or urllib.request.urlopen
+    send = urlopen or urllib.request.build_opener(_StripAuthOnRedirect).open
 
     def open_url(url: str, accept: str) -> bytes:
+        if urllib.parse.urlsplit(url).scheme != "https":
+            # Refused before the request is built, so the header carrying the token is never constructed for a URL
+            # that would not protect it. A transport problem, not a verdict on the submission.
+            raise OriginUnavailable(f"refusing a non-HTTPS artifact URL: {url!r}")
         request = request_for(url, headers={"Authorization": f"Bearer {token}", "Accept": accept,
                                             "X-GitHub-Api-Version": "2022-11-28"})
         with send(request, timeout=timeout) as response:

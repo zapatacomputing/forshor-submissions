@@ -263,6 +263,94 @@ def test_the_production_transport_keeps_the_token_in_the_header_and_bounds_what_
         big("https://api.github.com/x", "application/json")
 
 
+def test_the_transport_refuses_a_non_https_url_before_it_builds_the_token_header():
+    """Integration XQ, carried across from the superseded `ebf21b0`. The scheme is checked BEFORE the request is
+    built, so the header carrying `GH_TOKEN` is never constructed for a URL that would not protect it.
+
+    A transport problem, so `OriginUnavailable` and not a verdict. Production change that would fail this: dropping
+    the scheme check, which is how lane XN's transport shipped."""
+    def never(url, headers):
+        pytest.fail(f"the token header was built for {url!r}")
+
+    for url in ("http://api.github.com/x", "ftp://api.github.com/x", "file:///etc/passwd"):
+        opener = receipt_origin.urllib_opener("gh-secret", urlopen=lambda r, timeout: None, build=never)
+        with pytest.raises(OriginUnavailable, match="refusing a non-HTTPS artifact URL"):
+            opener(url, "application/json")
+
+
+def test_a_redirect_can_neither_downgrade_off_tls_nor_carry_the_token_to_another_host():
+    """Integration XQ, carried across from the superseded `ebf21b0`: the ONE control that branch had and lane XN's
+    transport did not. Both holes are CPython 3.12's own defaults, not hypotheticals --
+    `HTTPRedirectHandler.redirect_request` copies every header but `content-length`/`content-type` onto the new
+    request, and `http_error_302` allows `http`, so stock urllib would hand `Authorization: Bearer <GH_TOKEN>` to
+    whatever host a 302 names, in cleartext if it names `http`.
+
+    The token is the one input in this whole path that is neither re-derived nor compared against the trusted run, so
+    no later comparison can notice it leaked. Production change that would fail this: building the opener with bare
+    `urllib.request.urlopen`, or dropping `_StripAuthOnRedirect` from `build_opener`.
+
+    Exercised against the handler directly, with no socket: GATE B4 is still the one real HTTPS request, and nothing
+    in any suite makes one."""
+    import urllib.request
+
+    handler = receipt_origin._StripAuthOnRedirect()
+    original = urllib.request.Request("https://api.github.com/repos/x/actions/artifacts/1/zip",
+                                      headers={"Authorization": "Bearer gh-secret", "Accept": "application/json"})
+
+    # 1. A redirect off TLS is refused outright rather than followed without the header.
+    for downgrade in ("http://api.github.com/x", "ftp://api.github.com/x"):
+        assert handler.redirect_request(original, None, 302, "Found", {}, downgrade) is None, downgrade
+
+    # 2. A cross-host HTTPS redirect is followed, but the credential does not go with it.
+    crossed = handler.redirect_request(original, None, 302, "Found", {}, "https://evil.example/x")
+    assert crossed is not None
+    assert crossed.get_header("Authorization") is None, "the token followed the redirect to another host"
+    assert "gh-secret" not in str(dict(crossed.headers)), "the token survived the cross-host redirect"
+
+    # 3. A same-host HTTPS redirect is the ordinary case GitHub actually serves for an artifact zip, and it must
+    #    still carry the credential or every genuine fetch would 401.
+    same = handler.redirect_request(original, None, 302, "Found", {}, "https://api.github.com/elsewhere")
+    assert same is not None
+    assert same.get_header("Authorization") == "Bearer gh-secret"
+
+
+def test_the_production_transport_installs_the_redirect_guard_rather_than_bare_urlopen(monkeypatch):
+    """The guard above is only worth anything if `urllib_opener`'s DEFAULT transport is the opener carrying it. With
+    no `urlopen` injected, `build_opener` must be called with `_StripAuthOnRedirect` and its `open` used to send.
+
+    Production change that would fail this: reverting `send` to `urllib.request.urlopen`, which is what lane XN's
+    transport did and is why the token could have followed a redirect."""
+    import urllib.request
+
+    passed, sent = [], []
+
+    class FakeOpener:
+        def open(self, request, timeout=None):
+            sent.append(request)
+            return _Body(b"{}")
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *handlers: passed.extend(handlers) or FakeOpener())
+    opener = receipt_origin.urllib_opener("gh-secret")
+    assert receipt_origin._StripAuthOnRedirect in passed, \
+        "urllib_opener did not build its opener with the redirect guard"
+    assert opener("https://api.github.com/x", "application/json") == b"{}"
+    assert sent and sent[0].get_header("Authorization") == "Bearer gh-secret"
+
+
+class _Body:
+    def __init__(self, body):
+        self.body = body
+
+    def read(self, size):
+        return self.body[:size]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
 def test_a_transport_failure_reaches_the_publisher_as_unavailable_and_not_as_a_verdict():
     """A dead socket is not a verdict on a submission. Production change that would fail this: letting a transport
     exception escape `github_fetcher`, where `publish_verification` would see it as neither refusal nor pass."""
