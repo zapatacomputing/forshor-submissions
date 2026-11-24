@@ -1,7 +1,7 @@
 """Run from evaluation/: python -m pytest export_v2/pytests -q
 
 The four locally qualified standalone primitive receipts (catalyticB2 and adaptiveB3, each on the PhaseProduct
-and PhaseTripleProduct boards, verifier 931bbf16) are the oracle: the overlay must reprice the compiled export
+and PhaseTripleProduct boards, verifier 80d7b6b2, the operational pin) are the oracle: the overlay must reprice the compiled export
 to the recorded T, qubits and error ledger without touching the default price. Nothing here publishes.
 """
 from fractions import Fraction
@@ -22,6 +22,9 @@ from export_v2.mapping import DELTA_VALUES                           # noqa: E40
 DATA = Path(__file__).parent / "data"
 #: The four cases: fixture name, board, and whether the backend's T is an expectation.
 CASES = (("b2-pp", "pp", False), ("b2-ptp", "ptp", False), ("b3-pp", "pp", True), ("b3-ptp", "ptp", True))
+#: The uniform catalyst width b of each catalyticB2 case at each epoch delta, in `DELTA_VALUES` order. `uniform_b`
+#: makes b a function of delta, so the catalyst preparation is per-delta and one bank cannot serve four precisions.
+B2_WIDTH_BY_DELTA = {"b2-pp": (28, 33, 34, 41), "b2-ptp": (26, 31, 33, 39)}
 
 #: sha256 of the canonical DEFAULT export price of the two standalone policies on their own board at every
 #: delta (no primitive, no measured readout), captured at 792464f BEFORE this overlay existed. The overlay
@@ -42,7 +45,7 @@ BASELINE_CASES = {
 
 @pytest.fixture(scope="module")
 def receipts():
-    return json.loads(gzip.decompress((DATA / "primitive_receipts_931bbf1.json.gz").read_bytes()))
+    return json.loads(gzip.decompress((DATA / "primitive_receipts_80d7b6b.json.gz").read_bytes()))
 
 
 def _policy(document, board):
@@ -107,10 +110,20 @@ def test_the_receipt_fixture_is_the_recorded_local_qualification(receipts):
     for name, board, _ in CASES:
         receipt = receipts[name]["receipt"]
         assert receipt["epoch"] == overlay.EPOCH and receipt["verifier"]["base"] == overlay.VERIFIER_PIN
+        # The committed tree of 80d7b6b (`verifier_snapshot` of a clean checkout), not a local dirty byte lock.
+        assert receipt["verifier"]["tree_sha256"] == "35eeaf1d365cbe25191366ef72cea18854b1d35340b9af7d92d1230b3daa3c59"
         assert receipt["engineRevision"] == "677cc2e05ab178afff8dc632ff56058a8196a116"
         assert receipt["localOnly"] is True and receipt["publishable"] is False
         assert receipt["selection"]["scope"] == board
         assert sha256_hex(receipts[name]["compiled"]) == receipt["compiledDocumentSha256"]
+
+
+def test_the_primitive_verifier_pin_is_the_operational_pin():
+    """The qualification route compiles only in a clean checkout whose HEAD is VERIFIER_PIN
+    (`intake_v2._pinned_verifier_or_refused`), and the verifier checkout is provisioned at the operational pin. While
+    the two differed every primitive qualification was refused against the shipped checkout."""
+    trees = json.loads((Path(__file__).resolve().parents[2] / "policy-trees.json").read_text())
+    assert overlay.VERIFIER_PIN == trees["forshor"]["ref"] == "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
 
 
 # --------------------------------------------------------------------- the four recorded prices
@@ -147,6 +160,24 @@ def test_catalytic_b2_reproduces_the_recorded_price_at_every_delta(receipts, pri
         assert (out["detail"]["b"], out["rankedT"], out["qubits"]) == (
             recorded["b"], recorded["T_upper"], recorded["serial_Q_upper"]), f"{name} at {key}"
         assert out["detail"]["halfDiamondUpper"] == recorded["half_diamond_upper"]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("name,board", (("b2-pp", "pp"), ("b2-ptp", "ptp")))
+def test_the_catalyst_bank_is_per_delta_and_a_delta_without_its_own_bank_is_refused(receipts, priced, name, board):
+    """b is a function of delta, so each delta needs its own attested bank. A bank attested for another delta, or no
+    bank at all (what `request._build_request` passes for a delta the request carries no bank for), is REFUSED and
+    never priced at the default."""
+    keys = list(DELTA_VALUES)
+    assert tuple(_price(receipts, priced, name, board, key)["detail"]["b"] for key in keys) == B2_WIDTH_BY_DELTA[name]
+    document = receipts[name]["compiled"]
+    policy, selection = _policy(document, board), document["submitted_primitive"]
+    for key, b in zip(keys, B2_WIDTH_BY_DELTA[name]):
+        borrowed = [_preparation(receipts[name], other) for other in keys if other != key]
+        for bank in (None, *borrowed):
+            with pytest.raises(ValueError, match=f"catalyticB2 on the {board} board: the catalyst preparation must be "
+                                                 f"one word per resolution 4..{b}$"):
+                overlay.project(policy, priced[f"{board}/{key}"], selection, preparation=bank)
 
 
 @pytest.mark.slow

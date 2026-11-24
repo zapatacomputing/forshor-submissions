@@ -371,8 +371,8 @@ def _forshor_build(forshor_tree, template, workdir, timeout, kind, qualify_reado
     if qualify_primitive:
         # The standalone primitive is qualified on BOTH single-product boards (`primitive_overlay.BOARD_SCHEMA`), so
         # unlike readout there is no `kind` restriction here. The pin is the primitive rule's own VERIFIER_PIN, the
-        # build the recorded qualification receipts were taken at; it is NOT the operational pin in
-        # `evaluation/policy-trees.json`, and the lane report records that divergence as a release handoff.
+        # build the recorded qualification receipts were taken at; it equals the operational pin in
+        # `evaluation/policy-trees.json`, so the route compiles in the checkout the policy verifier is provisioned with.
         from export_v2.primitive_overlay import VERIFIER_PIN
         _pinned_verifier_or_refused(forshor_tree, template, VERIFIER_PIN, "primitive qualification")
         exe = [*exe, "--primitive", "submitted"]

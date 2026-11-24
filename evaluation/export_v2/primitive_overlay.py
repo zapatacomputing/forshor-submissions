@@ -44,7 +44,7 @@ from .mapping import DELTA_VALUES
 
 EPOCH = "ab1f8887b1b50e56"
 RULE = "standalone-primitive-pricing-v1"
-VERIFIER_PIN = "931bbf16e7d37e38fa938a590e0f3e444222b812"
+VERIFIER_PIN = "80d7b6b2d0e696df46f1fa6ed928cbd1d9d7d6c5"
 SELECTION_SCHEMA = "forshor.primitive-selection/v1"
 BOARD_SCHEMA = {"pp": "forshor.policy-submission/v1", "ptp": "forshor.ptp-policy-submission/v1"}
 #: The compiled `submitted_primitive.backend` label of each `Shor.PrimitiveSynthesis` constructor that is
