@@ -54,7 +54,7 @@ filename read as "awaiting deployment". A conservative guard is not a gap. `prim
 and they are correct the day a primitive-bearing submission is published.
 
 The archive is the ONLY durable record of the design and the primitive. The ledger row cannot carry either: the published row's field set is CLOSED -- an
-unrecognised key is rejected, not ignored -- and it names neither (lane XF, INTEGRATION-WAVE2.md "The row/design seam"; the field set is transcribed into this
+unrecognised key is rejected, not ignored -- and it names neither (lane XF's seam ruling; the field set is transcribed into this
 repository as `SITE_ROW_FIELDS` in `export_v2/pytests/test_design_price_plumbing.py`), and `mapping.row_of` copies no such key -- yet `mapping.ranked_price_of` now ranks the QFT
 projection's own T and qubits, so a design-bearing row would carry the projection's numbers with nothing naming the design. The compiled selection itself is
 archived verbatim inside `verification.json` (`printed.submitted_full_run` / `submitted_primitive`); the index key is what makes it findable, comparable and
@@ -145,8 +145,9 @@ BOARD_SETS = (["full", "pp"], ["full"], ["pp"], ["ptp"])
 AXIS_BOARD = {"readout": "full", "design": "full", "primitive": "standalone"}
 #: Price fields an index entry must never carry. `T` / `rankedT` because lane XA made deterministic and expected-adaptive
 #: T structurally uncollapsible and a bare field would undo it here; `ranked_upper_T` because lane XL's sampled price is
-#: an interval endpoint, not a bound; `qubits` because the full run's count is the live-qubit PEAK and the layout total
-#: is 3.4x larger (INTEGRATION-WAVE2.md, integration defect B), so an unlabelled count is ambiguous in its unit.
+#: an interval endpoint, not a bound; `qubits` because the full run's count is the live-qubit PEAK and the static layout
+#: total is several times larger (`mapping.peak_label` states the distinction the panel renders, and the full board's
+#: number comes from `qubits_peak`), so an unlabelled count is ambiguous in its unit.
 BARE_PRICE_KEYS = ("T", "t", "rankedT", "ranked_upper_T", "qubits")
 
 

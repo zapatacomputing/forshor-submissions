@@ -882,7 +882,8 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         # them, so a published MEASURED submission was archived as a LEGACY entry -- which `entry_kind` reads as the
         # coherent readout. Three consequences, in the one record that is kept forever: the wrong readout was
         # recorded; the design was not recorded at all (nothing else can record it -- the ledger row has no field for
-        # one, INTEGRATION-WAVE2.md "The row/design seam"); and `plan_readout_variant` compared the variant against
+        # one -- lane XF's seam ruling, transcribed here as `SITE_ROW_FIELDS` in
+        # `export_v2/pytests/test_design_price_plumbing.py`); and `plan_readout_variant` compared the variant against
         # the default it is not, so your own measured and coherent copies of one policy were a repeat rather than the
         # variant pair lane WA built the planner for.
         #
