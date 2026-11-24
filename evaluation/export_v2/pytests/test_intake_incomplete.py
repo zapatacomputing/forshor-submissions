@@ -6,7 +6,7 @@ so it must not be reported in the same class as a refusal (the policy is bad) or
 infrastructure fault (the harness is bad). `Incomplete` is that third class: exit 2 with a `stage`
 and the sentence "This is not a verdict on the policy.", no success receipt, no mutated results.
 
-Two gaps this pins, both from the census (ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md):
+Two gaps this pins, both found by the refusal-cause census for this release:
 
   * F2 - the OUTER wall-clock stop escaped `verify_submission` as `subprocess.TimeoutExpired` and
     was reported with no stage and no not-a-verdict sentence, indistinguishable from a KeyError bug;

@@ -14,8 +14,8 @@ COHERENT_ROUTE = "is not supported by the coherent pricing route"
 #: Readouts a dedicated local route qualifies (never published). Anything else is a participant error.
 QUALIFIED_READOUTS = ("semiclassical",)
 #: The anchor both full-run gates below raise, so the two cannot drift apart by a byte. Matched as a PREFIX by
-#: starter/test_pack_validation.py, export_v2/pytests/test_readout_overlay.py and
-#: ForShor_Integration/readiness/pre-push/bind_native_split_mirror.py.
+#: starter/test_pack_validation.py and export_v2/pytests/test_readout_overlay.py, so the leading
+#: sentence must survive any rewording.
 FULL_RUN_ROUTE = "compiled submitted_full_run metadata requires dedicated nonpublishing full-run qualification"
 #: The only selection object shape the qualification opt-in below will let through.
 FULL_RUN_SELECTION_SCHEMA = "forshor.full-run-selection/v1"

@@ -230,15 +230,17 @@ class RefusalDifferentiation(unittest.TestCase):
     Owner priority 2026-11-24: differentiating incorrect policies from correct ones is the
     priority. One message over several causes cannot tell a PARTICIPANT ERROR (rewrite the file)
     from an UNSUPPORTED-BUT-VALID request (use the dedicated nonpublishing route), and those need
-    different participant actions. Census and the full cause enumeration:
-    ForShor_Integration/readiness/pre-push/REFUSAL-CENSUS.md, collisions C5, C6, C7, C8.
+    different participant actions. The four causes that used to collide are enumerated as the
+    class-level patterns below, one per cause, and each test drives the one it names.
 
     Matching is on anchored, class-level patterns naming the CAUSE, never on incidental wording.
     Nothing here changes what is accepted or refused: every source below was refused before too.
     """
 
     #: The anchors the rest of the repository matches on; a rewording must keep them intact.
-    #: ForShor_Integration/readiness/pre-push/bind_native_split_mirror.py:72 asserts the first.
+    #: Consumers match them as PREFIXES -- test_source_gate_surface.py, and
+    #: test_the_import_message_does_not_promise_a_rule_that_is_not_checked below for the second --
+    #: so a rewording keeps every consumer working only if the leading sentence survives.
     FULL_REFUSAL = ExplicitDefaults.FULL_REFUSAL
     IMPORT_REFUSAL = ExplicitDefaults.IMPORT_REFUSAL
 
