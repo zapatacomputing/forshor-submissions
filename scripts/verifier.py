@@ -545,7 +545,9 @@ def strip_lean_comments(text: str) -> str:
                 if c == '"':
                     break
             continue
-        if depth == 0 and text[i] == "'":
+        # A `'` that follows an identifier character is part of that identifier (`f'`, `x'a'`), not a character
+        # literal. Reading it as a literal lets `f'"'" "/- " #eval 7` desynchronise this scan from Lean's.
+        if depth == 0 and text[i] == "'" and not (i and (text[i - 1].isalnum() or text[i - 1] in "_'!?")):
             char_end = _char_literal_end(text, i)
             if char_end is not None:
                 output.append(text[i:char_end])

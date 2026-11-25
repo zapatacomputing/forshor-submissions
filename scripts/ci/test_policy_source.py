@@ -602,5 +602,112 @@ class AdmittedDesign(unittest.TestCase):
             with self.subTest(label):
                 self.assertIn(self.FULL_REFUSAL, self.reason(text))
 
+class GateEvasions(unittest.TestCase):
+    """Lean runs what the hand lexer hides: interpolated strings and primed identifiers desynchronise the two views."""
+
+    def refused(self, text):
+        with self.assertRaises(ValueError):
+            validate(text)
+
+    def test_interpolated_string_cannot_hide_a_command(self):
+        # Production change that would fail this: dropping the `s!"` refusal. `lean` prints 2 for the first line.
+        for body in ('def a := s!"{ "--" }" #eval 1 + 1',
+                     'def a := s!"{ "/-" }"\n#eval 3',
+                     'def a := m!"{ "--" }" #eval 1'):
+            with self.subTest(body=body):
+                self.refused(SAFE.replace('def points', body + '\ndef points'))
+
+    def test_primed_identifier_is_not_a_character_literal(self):
+        # `f'` is one identifier; reading `'"'` as a char literal hid `#eval 7`. `lean` prints 7 for this line.
+        self.refused(SAFE.replace('def points', "f'\"'\" \"/- \" #eval 7 -- -/\ndef points"))
+
+    def test_a_second_declaration_or_mention_behind_a_modifier_is_refused(self):
+        for extra in ('private def submittedFullRunDesign : Shor.FullRunDesign := { data := none }',
+                      '@[simp] def submittedFullRunDesign : Shor.FullRunDesign := { data := none }',
+                      'private def foo := submittedFullRunDesign'):
+            with self.subTest(extra=extra):
+                self.refused(source(MEASURED, DESIGN_BODY + '\n' + extra, imports=FULL_IMPORT))
+
+    def test_a_helper_after_the_design_is_not_read_as_part_of_it(self):
+        validate(source(MEASURED, DESIGN_BODY + '\nprivate def splitHelper := 1', imports=FULL_IMPORT))
+
+    def test_namespace_walk_is_linear(self):
+        import policy_source, time
+        start = time.time()
+        policy_source.default_selectors('namespace a\n' * 40000)
+        self.assertLess(time.time() - start, 3)
+
+
+class DesignFields(unittest.TestCase):
+    """The gate reads the design's own fields: a field that is not a QFT family and a declaration that is not one literal are
+    refused before anything is built, and every design the docs show is still accepted."""
+
+    FULL_REFUSAL = ExplicitDefaults.FULL_REFUSAL
+
+    def reason(self, text):
+        with self.assertRaises(ValueError) as refused:
+            validate(text)
+        return str(refused.exception)
+
+    CHOICE = 'some ⟨.rossSelinger, .approximate ⟨25, 5, by decide, by decide, by decide⟩⟩'
+    EXACT = 'some ⟨.catalytic, .exact⟩'
+
+    def declaration(self, value, form=':='):
+        return f'def submittedFullRunDesign : Shor.FullRunDesign {form}\n  {value}'
+
+    def test_a_design_that_sets_only_the_qft_families_is_accepted_in_every_way_it_can_be_written(self):
+        # Production change that would fail this: a literal check that refuses a valid design (a false positive).
+        import policy_source
+        c, e = self.CHOICE, self.EXACT
+        for label, text in {
+                'one family': self.declaration(f'{{ data := {c} }}'),
+                'three families, commas': self.declaration(f'{{ data := {c}, work := {e}, scratch := {e} }}'),
+                'any order': self.declaration(f'{{ scratch := {e}, data := {c} }}'),
+                'fields on their own lines, no commas': self.declaration(f'{{ data := {c}\n    work := {e} }}'),
+                'a comment between fields': self.declaration(f'{{ data := {c}, -- the big one\n    work := {e} }}'),
+                'where form': self.declaration(f'data := {c}\n  work := {e}', form='where'),
+                'extra spaces': self.declaration(f'{{   data   :=   {c}  }}'),
+                'a looser ceiling (1e-3)': self.declaration('{ data := some ⟨.rossSelinger, .approximate ⟨1, 3, by decide, by decide, by decide⟩⟩ }'),
+        }.items():
+            with self.subTest(label):
+                validate(source(MEASURED, text, imports=FULL_IMPORT))
+                self.assertIs(policy_source.declared_full_run(source(MEASURED, text, imports=FULL_IMPORT)), True)
+
+    def test_a_field_that_is_not_a_qft_family_is_refused_by_name(self):
+        # Production change that would fail this: reading only the first value for the axes the refusal list names, so
+        # `{ foo := .. }` or a field the list does not know went to Lean unremarked (the hosted docs said it is refused naming it).
+        for field in ('foo', 'bar', 'data.x', 'Data', 'datas'):
+            for text in (self.declaration(f'{{ data := {self.CHOICE}, {field} := 3 }}'), self.declaration(f'{{ {field} := 3 }}'),
+                         self.declaration(f'data := {self.CHOICE}\n  {field} := 3', form='where')):
+                with self.subTest(field=field, text=text[-40:]):
+                    reason = self.reason(source(MEASURED, text, imports=FULL_IMPORT))
+                    self.assertIn(self.FULL_REFUSAL, reason)
+                    self.assertIn(f'sets the field `{field}`', reason)
+
+    def test_a_design_that_is_not_one_literal_is_refused_because_its_fields_cannot_be_read(self):
+        # Production change that would fail this: `def d := { multiplier := .. }` then `submittedFullRunDesign := d` passed the
+        # axis scan, because the scan read only the selector's own text; the verifier build refused it much later.
+        indirect = ('def hidden : Shor.FullRunDesign := { multiplier := .quotientStream, data := ' + self.EXACT + ' }')
+        for label, text in {
+                'a name': source(MEASURED, indirect, self.declaration('hidden'), imports=FULL_IMPORT),
+                'a name in a with-copy': source(MEASURED, indirect, self.declaration(f'{{ hidden with data := {self.CHOICE} }}'), imports=FULL_IMPORT),
+                'a call': source(MEASURED, indirect, self.declaration('id hidden'), imports=FULL_IMPORT),
+                'a parenthesised literal': source(MEASURED, self.declaration(f'({{ data := {self.CHOICE} }} : Shor.FullRunDesign)'), imports=FULL_IMPORT),
+                'a literal and then more': source(MEASURED, self.declaration(f'{{ data := {self.CHOICE} }} |> id'), imports=FULL_IMPORT),
+                'an empty literal': source(MEASURED, self.declaration('{ }'), imports=FULL_IMPORT),
+                'an unbalanced literal': source(MEASURED, self.declaration(f'{{ data := {self.CHOICE}'), imports=FULL_IMPORT),
+        }.items():
+            with self.subTest(label):
+                reason = self.reason(text)
+                self.assertIn(self.FULL_REFUSAL, reason)
+                self.assertIn('cannot be read as a design', reason)
+
+    def test_the_named_axis_refusals_keep_their_wording_and_come_first(self):
+        # A named axis is still refused as the axis it is, not as an unreadable declaration.
+        reason = self.reason(source(MEASURED, self.declaration(f'{{ multiplier := .splitCompare, data := {self.CHOICE} }}'), imports=FULL_IMPORT))
+        self.assertIn('multiplier topology', reason)
+        self.assertNotIn('cannot be read', reason)
+
+
 if __name__ == '__main__':
     unittest.main()

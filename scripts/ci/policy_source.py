@@ -88,15 +88,19 @@ def default_selectors(text, *, forms=_DEFAULT_FORMS, declarations=_DEFAULT_DECL)
     lines = text.split('\n')
     consumed = {}
     scopes = []
+    prefixes = ['']                                          # prefixes[-1] is the joined namespace; O(1) per line
     for i, line in enumerate(lines):
         stripped = line.strip()
         if (m := _NAMESPACE.fullmatch(stripped)):
             scopes.append(m[1])
+            prefixes.append(f'{prefixes[-1]}.{m[1]}' if prefixes[-1] else m[1])
         elif _SECTION.match(stripped):
             scopes.append('')
+            prefixes.append(prefixes[-1])
         elif _END.match(stripped) and scopes:
             scopes.pop()
-        namespace = '.'.join(part for part in scopes if part)
+            prefixes.pop()
+        namespace = prefixes[-1]
         found = re.match(r'def[ \t]+(submitted\w+)', line)       # column 0 only
         if not found or found[1] not in declarations or found[1] in consumed or namespace not in forms[found[1]][1]:
             continue
@@ -179,7 +183,7 @@ def _declaration_span(lines, index):
     """`(first, end)` line indices of the declaration starting at `lines[index]`: it runs until the next non-blank
     line that starts a command at column 0 (or the end of the text)."""
     end = index + 1
-    while end < len(lines) and not (lines[end].strip() and _COMMAND_START.match(lines[end])):
+    while end < len(lines) and not (lines[end].strip() and not lines[end][0].isspace()):
         end += 1
     return index, end
 
@@ -282,6 +286,52 @@ _REFUSED_AXES = (
 )
 
 
+#: The fields of `Shor.FullRunDesign` a full-run design may set: the three QFT families the reference topology has. Every other
+#: field (`multiplier`, the `*Rotations`, `step*`, `exponent`) is outside the axis the verifier serializes.
+_DESIGN_FIELDS = ('data', 'work', 'scratch')
+_OPEN = {'(': ')', '[': ']', '{': '}', '⟨': '⟩'}
+_CLOSE = frozenset(_OPEN.values())
+
+
+def _design_literal_problem(value, where):
+    """Why `value` (a design declaration's value, whitespace-collapsed) is not a plain structure literal that sets only the QFT
+    families -- `{ data := .., work := .., scratch := .. }`, or `where` and the same fields -- or None when it is one.
+
+    Reading the fields off the text is only sound when the text IS the literal: a name (`def d := { multiplier := .. }` and then
+    `submittedFullRunDesign := d`), a call, or a `{ base with .. }` copy can carry fields this gate cannot see. A family's own
+    value cannot (the three are typed `Option QftChoice`), so bracketed text is skipped and only the field names at the
+    literal's own level are read. This refuses what the gate cannot read; Lean still decides validity."""
+    text = value.strip()
+    braced = text.startswith('{')
+    if braced == where:
+        return 'it is not a structure literal `{ data := .., work := .., scratch := .. }`' if not where else \
+            'it is written with `where` but starts a brace literal'
+    level, stack, own = (1 if braced else 0), [], []
+    for index, char in enumerate(text):
+        if char in _OPEN:
+            if len(stack) == level:
+                own.append(' ')                                # a nested group stands in for one token
+            stack.append(_OPEN[char])
+        elif char in _CLOSE:
+            if not stack or stack.pop() != char:
+                return 'its brackets do not match'
+            if braced and not stack and index != len(text) - 1:
+                return 'it continues after the closing brace of the literal'
+        elif len(stack) == level:
+            own.append(char)
+    if stack:
+        return 'its brackets do not match'
+    flat = ''.join(own)
+    if re.search(r"(?<![\w'.])with(?![\w'.])", flat):
+        return 'it copies another record with `with`, whose fields this gate cannot read'
+    names = re.findall(r"(?<![\w'.])([A-Za-z_][\w'.]*)[ \t]*:=", flat)
+    if (unknown := next((n for n in names if n not in _DESIGN_FIELDS), None)) is not None:
+        return f'it sets the field `{unknown}`, which is not one of the QFT families `data`, `work`, `scratch`'
+    if not names:
+        return 'it sets no field'
+    return None
+
+
 def _measured_readout_declared(text):
     """True when `text` (comment-stripped) declares the semiclassical readout in its one shipped form."""
     measured, consumed = default_selectors(text, forms=_MEASURED_FORMS, declarations=_MEASURED_DECL)
@@ -320,6 +370,12 @@ def check_full_run_selector(text):
                              'the reference topology')
     if not _measured_readout_declared(text):
         raise ValueError(f'{FULL_RUN_REFUSAL}: line {number}, {cause}')
+    first, end = _declaration_span(lines, index)
+    where = re.search(r":=|(?<![\w'])where(?![\w'])", '\n'.join(lines[first:end]))[0] == 'where'
+    if (problem := _design_literal_problem(value, where)) is not None:
+        raise ValueError(f'{FULL_RUN_REFUSAL}: line {number}, this declaration cannot be read as a design: {problem}; a full-run '
+                         'design is written as one structure literal that sets only the QFT families, '
+                         '`{ data := some ⟨..⟩, work := some ⟨..⟩, scratch := some ⟨..⟩ }` (or the same fields after `where`)')
     namespace = []
     for line in lines[:index]:
         stripped = line.strip()
@@ -361,6 +417,10 @@ def validate(source, *, qualify_full_run=False):
         raise ValueError(f'Policy.lean line {text.count(chr(10), 0, escaped.start()) + 1}: the escaped identifier '
                          f'delimiter {escaped[0]} is outside the policy source rules, because an escaped name can '
                          'hide a namespace or command token; use a plain identifier')
+    if (interp := re.search(r'[A-Za-z_]!\s*"', text)):
+        raise ValueError(f'Policy.lean line {text.count(chr(10), 0, interp.start()) + 1}: interpolated strings '
+                         '(`s!"..."`, `f!"..."`, `m!"..."`) are outside the policy source rules, because code inside '
+                         'the braces can hide what follows from the source gate')
     found = BANNED.search(text)
     if found:
         line = text.count('\n', 0, found.start()) + 1
