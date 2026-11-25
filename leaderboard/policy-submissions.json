@@ -510,6 +510,26 @@
      "target": "approximate"
     }
    }
+  },
+  {
+   "policy_id": "5ffcee408e7769a9e7a9d70c5a236c06db20a1e4",
+   "digest": "18f904abc0da0789b9fdaa1818591035e9130c84562e21d7c152b8d7f3056e75",
+   "mode": "PhaseProduct",
+   "board": "pp",
+   "sha256": "8ac14a1004156a0358718e5785ce9f390c299badfd51cfae366b42ed7124a84c",
+   "path": "results/policy-submissions/5ffcee408e7769a9e7a9d70c5a236c06db20a1e4",
+   "source": {
+    "repository": "zapatacomputing/forshor-submissions",
+    "pr_number": 156,
+    "github_login": "olsonjonny",
+    "run_id": "45679233356",
+    "created_at": "2026-11-25T18:56:55Z"
+   },
+   "readout": "semiclassical",
+   "boards": [
+    "pp",
+    "full"
+   ]
   }
  ]
 }
