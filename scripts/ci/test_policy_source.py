@@ -631,7 +631,7 @@ class GateEvasions(unittest.TestCase):
     def test_a_helper_after_the_design_is_not_read_as_part_of_it(self):
         validate(source(MEASURED, DESIGN_BODY + '\nprivate def splitHelper := 1', imports=FULL_IMPORT))
 
-    def test_namespace_walk_is_linear(self):
+    def test_namespace_walk_finishes_quickly_on_a_long_file(self):
         import policy_source, time
         start = time.time()
         policy_source.default_selectors('namespace a\n' * 40000)
