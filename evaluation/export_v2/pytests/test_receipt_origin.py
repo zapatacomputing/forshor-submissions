@@ -417,3 +417,9 @@ def test_the_github_fetcher_refuses_an_artifact_without_a_verification_or_over_t
     monkeypatch.setattr(receipt_origin, "MAX_MEMBER_BYTES", 4)
     with pytest.raises(OriginUnavailable, match="larger than 4 bytes"):
         receipt_origin.github_fetcher("tok", opener=opener_for(_zip("verification.json", b"{}" * 100)))("n", "1", 2)
+
+
+def test_a_receipt_above_the_old_eight_mebibyte_bound_is_read():
+    """A catalytic full-run design receipt is about 9.6 MB; the origin proof must still read it."""
+    body = b"x" * (9 * 1024 * 1024)
+    assert receipt_origin.read_member(_zip("verification.json", body)) == body

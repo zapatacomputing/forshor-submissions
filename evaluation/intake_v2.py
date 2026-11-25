@@ -209,6 +209,20 @@ def refuse_unqualified_design(source: str) -> None:
         raise Refused("format", f"{READOUT_REFUSAL}: line {number}, {READOUT_UNPRICED_CAUSE}")
 
 
+def require_semiclassical_declared(source: str) -> None:
+    """Refuse a measured (semiclassical) receipt whose Lean file does not declare the semiclassical readout, in the one
+    shipped form (`policy_source.declared_readout`, the source gate's own recogniser). Raises `Refused`."""
+    sys.path.insert(0, str(HERE.parent))
+    from scripts.ci.policy_source import declared_readout
+    try:
+        declared = declared_readout(source)
+    except ValueError as error:
+        raise Refused("format", str(error)) from error
+    if declared != "semiclassical":
+        raise Refused("format", "the verification carries a measured (semiclassical) export, but its Lean file does not declare the semiclassical readout "
+                                "(`def submittedDesign : Shor.SubmissionDesign := { readout := .semiclassical }`)")
+
+
 #: The leading sentence of the refusal for a `submittedPrimitive` declaration on a scored submission.
 PRIMITIVE_SOURCE_REFUSAL = "submittedPrimitive is not accepted for a scored submission"
 
@@ -781,9 +795,11 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     # refusal below also closed the ONLY route production uses. A receipt still vouches for nothing -- but it no longer
     # has to. `scripts/ci/policy_publication.js:96-98` already stamps the trusted `ciVerification` receipt into the
     # file this route is handed, and `receipt_origin.establish` turns that stamp into a proof by re-deriving the
-    # verification identity HERE and re-fetching the artifact it names: the COMPARISON authorises, never the receipt.
-    # So the standing rule is kept in spirit and sharpened -- the inputs come from the trusted GitHub run (the
-    # artifact) and this checkout (the fingerprint), and a receipt that is not that artifact is refused by name.
+    # verification identity HERE and re-fetching the artifact it names: the receipt is held to that comparison and
+    # vouches for nothing itself. So the standing rule is kept in spirit and sharpened -- the inputs come from the
+    # trusted GitHub run (the artifact) and this checkout (the fingerprint), and a receipt that is not that artifact is
+    # refused by name. The comparison shows where the receipt came from, not that its content is right: the gates
+    # below (the Lean file declares the readout the export carries, the export is the one the file declares) still rule.
     measured = isinstance(printed, dict) and printed.get("schema") == MEASURED_SCHEMA
     trusted_origin = None
     if "localReadoutQualification" in v or measured:
@@ -841,6 +857,10 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         if isinstance(v.get("leanSha256"), str) and v["leanSha256"] != hashlib.sha256(v["leanSource"].encode()).hexdigest():
             raise Refused("format", "the verification's Lean source does not match its own digest")
         if measured:
+            # The Lean file must declare the readout the export carries (the coherent branch below has
+            # `refuse_unqualified_design` for the reverse): the verifier job builds a measured export only for a file that
+            # declares it, so a receipt pairing one with a file that does not is not what that job produced.
+            require_semiclassical_declared(v["leanSource"])
             # The selection must be the one this source declares (an inconsistent receipt is refused here,
             # by name, before anything is priced or archived).
             check_full_run_binding(v["leanSource"], printed)
@@ -919,7 +939,11 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
     archive = archive_commit or (archive_view()[1] if archive_view else _published_archive_commit(url, token))
     accepted_now = archive_view or (lambda: (sorted(set(state_of().get("submissionIds", [])) | {head_sha}), archive))
 
-    def price() -> Dict[str, Any]:
+    def price(primitive_from: Optional[str] = None) -> Dict[str, Any]:
+        # `primitive_from` is the earlier archived copy of this policy that this one is a variant of, as the archive
+        # step reported it: the request must then carry only the boards the archive entry claims (`archive_policy`).
+        # None is every ordinary submission, and `_build_request` then builds exactly what it always built.
+        accepted = [head_sha, primitive_from] if primitive_from else [head_sha]
         if readout is not None:
             from export_v2.readout_overlay import VERIFIER_PIN
             # The measured pricer re-binds the evidence and re-converts the compiled selection itself, so the design
@@ -929,11 +953,11 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
                                                   lean_source=v["leanSource"].encode("utf-8"), model=model, store=store,
                                                   head_sha=head_sha, pull_number=pull, github_login=login, run_id=run_id,
                                                   submitted_at=submitted_at, evaluated_at=submitted_at, archive_commit=archive,
-                                                  accepted_ids=[head_sha], number=0, evaluation_key=evaluation_key,
-                                                  base_generation="", log=log)
+                                                  accepted_ids=accepted, number=0, evaluation_key=evaluation_key,
+                                                  base_generation="", primitive_from=primitive_from, log=log)
         return request.build_request(policy_json, model=model, store=store, head_sha=head_sha, pull_number=pull, github_login=login, run_id=run_id,
-                                     submitted_at=submitted_at, evaluated_at=submitted_at, archive_commit=archive, accepted_ids=[head_sha], number=0,
-                                     evaluation_key=evaluation_key, base_generation="", forshor=forshor, log=log)
+                                     submitted_at=submitted_at, evaluated_at=submitted_at, archive_commit=archive, accepted_ids=accepted, number=0,
+                                     evaluation_key=evaluation_key, base_generation="", forshor=forshor, primitive_from=primitive_from, log=log)
 
     sent: Dict[str, Any] = {}
 
@@ -971,9 +995,18 @@ def publish_verification(v: Dict[str, Any], *, login: str, pull: int, url: str, 
         # The recovery loop below then reuses this request instead of pricing again. Only the order moves: the request
         # carries `archive` (the commit read above) and `[head_sha]`, not the archive write, and every attempt
         # still replaces both from `accepted_now` before sending.
-        template = price()
+        price_with = price
+        template = price_with()
         price = lambda: template                                # noqa: E731
         archived = archive_write(v, readout="semiclassical" if measured else "coherent", primitive=None, design=design)
+        # The archive entry says which boards this submission occupies: your own earlier copy priced the other way keeps
+        # the boards both results price alike, so this one is a variant of it and enters the full board alone. The
+        # request is priced again with that earlier entry named (`primitiveFrom`) so it carries the same boards; only a
+        # variant pays for the second pricing, and an ordinary submission keeps the request built above, byte for byte.
+        if archived.get("primitiveFrom"):
+            template = price_with(archived["primitiveFrom"])
+        if archived.get("boards") is not None and sorted(archived["boards"]) != sorted(template["submission"]["boards"]):
+            raise Incomplete("publisher", f"the archive entry occupies the boards {sorted(archived['boards'])} but the request prices {sorted(template['submission']['boards'])}")
         log(f"archived {archived['path']} on submission-results ({archived['commit'][:12]})" if archived["added"] else f"already archived: {archived['path']}")
         for repeat in archived.get("duplicates") or []:
             kind = "same_participant" if repeat["sameParticipant"] else "other_participant"   # a repeat the rules allow (archive_policy.DUPLICATE_RULES): identified here, published like any other

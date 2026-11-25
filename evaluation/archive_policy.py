@@ -351,9 +351,12 @@ def check_summary(v: Dict[str, Any], summary: Optional[str]) -> None:
 def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, head_sha: str, run_id: str, source: str,
                  summary: Optional[str] = None, repository: str = REPOSITORY, duplicates: Optional[List[Dict[str, Any]]] = None,
                  published_ids: Optional[Collection[str]] = None, readout: str = "coherent",
-                 primitive: Optional[str] = None, design: Optional[Dict[str, Any]] = None) -> bool:
+                 primitive: Optional[str] = None, design: Optional[Dict[str, Any]] = None,
+                 variant: Optional[Dict[str, Any]] = None) -> bool:
     """Write the files and the index entry into the checkout. Returns whether anything changed. Raises `ArchiveRefused` (`DuplicatePolicy` when `DUPLICATE_RULES`
     refuse a repeat). Repeats that the rules allow are appended to `duplicates`. `published_ids`: see `find_duplicates`.
+    `variant`, when given, is filled with what the request must carry to match the entry (`primitiveFrom`, the earlier entry this one derives from, or None; and `boards`, the entry's boards), also when the entry was already archived:
+    the archive and the published request must name the same boards.
 
     `readout` is this submission's readout design. Your own earlier copies of the policy go through `plan_readout_variant`: the same readout is still the repeat it has
     always been, the other readout is a variant of them and keeps their primitive, so it enters the full board alone. Only such a non-legacy entry records `readout` and
@@ -386,6 +389,14 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
         # to know which of the two it was, and they are different places to look.
         if entry_kind(old) != kind:
             raise ArchiveRefused(f"{head_sha} is already archived as a different result ({entry_kind(old)}, not {kind})")
+        if variant is not None:
+            variant["boards"], variant["primitiveFrom"] = entry_boards(old), None
+            if "pp" not in variant["boards"] and old["board"] in BOARDS_OF:     # a full-only entry: say which earlier entry it derives from, as when it was written
+                try:
+                    variant["primitiveFrom"] = plan_readout_variant(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha, readout=readout,
+                                                                    published_ids=published_ids, primitive=primitive, design=design, board=old["board"])
+                except DuplicatePolicy:
+                    pass
         return False
     repeats = find_duplicates(index, digest=v["digest"], mode=v["mode"], login=login, head_sha=head_sha,
                               published_ids=published_ids)
@@ -419,6 +430,8 @@ def write_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, he
         if design is not None:
             entry["design"] = {family: design[family] for family in sorted(design)}
     check_entry(entry)
+    if variant is not None:
+        variant["boards"], variant["primitiveFrom"] = entry_boards(entry), primitive_from
     folder = checkout / DIR / head_sha
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "Policy.lean").write_text(source)
@@ -450,7 +463,7 @@ def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, 
                    published_ids: Optional[Collection[str]] = None, readout: str = "coherent",
                    primitive: Optional[str] = None, design: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Add the policy to `BRANCH` and push, starting each attempt from the branch's current tip (a competing archive push is retried, not merged).
-    `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates"}` (the earlier submissions of the same policy that the rules allowed).
+    `checkout` is a clone with `remote`; returns `{"path", "commit", "added", "duplicates", "primitiveFrom", "boards"}` (the earlier submissions of the same policy that the rules allowed; the earlier entry this one is a variant of, and the boards the entry occupies: the published request must carry the same).
     `readout`, `primitive` and `design` are passed to `write_policy`, which decides there what an earlier copy of the policy priced another way means."""
     env = _env(token)
     last = ""
@@ -458,16 +471,17 @@ def archive_policy(checkout: Path, v: Dict[str, Any], *, login: str, pull: int, 
         _git(checkout, "fetch", "--depth=1", remote, BRANCH, env=env)
         _git(checkout, "checkout", "--detach", "FETCH_HEAD")
         duplicates: List[Dict[str, Any]] = []
+        variant: Dict[str, Any] = {}
         if not write_policy(checkout, v, login=login, pull=pull, head_sha=head_sha, run_id=run_id, source=source, summary=summary, repository=repository,
-                            duplicates=duplicates, published_ids=published_ids, readout=readout, primitive=primitive, design=design):
+                            duplicates=duplicates, published_ids=published_ids, readout=readout, primitive=primitive, design=design, variant=variant):
             tip = _git(checkout, "rev-parse", "HEAD").stdout.strip()
-            return {"path": f"{DIR}/{head_sha}", "commit": tip, "added": False, "duplicates": []}
+            return {"path": f"{DIR}/{head_sha}", "commit": tip, "added": False, "duplicates": [], **variant}
         _git(checkout, "add", INDEX_PATH, f"{DIR}/{head_sha}")
         _git(checkout, "-c", "user.name=forshor-results", "-c", "user.email=forshor-results@users.noreply.github.com", "commit", "-q", "-m",
              f"Archive policy submission {head_sha[:12]} (PR #{pull}, {login})")
         pushed = _git(checkout, "push", remote, f"HEAD:refs/heads/{BRANCH}", env=env, check=False)
         if pushed.returncode == 0:
             return {"path": f"{DIR}/{head_sha}", "commit": _git(checkout, "rev-parse", "HEAD").stdout.strip(), "added": True,
-                    "duplicates": duplicates}
+                    "duplicates": duplicates, **variant}
         last = (pushed.stderr or "").strip().splitlines()[-1:] and (pushed.stderr or "").strip().splitlines()[-1] or "push failed"
     raise RuntimeError(f"could not push the archive after {attempts} attempts: {last[:300]}")

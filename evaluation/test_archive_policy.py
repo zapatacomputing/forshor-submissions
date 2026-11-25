@@ -414,6 +414,30 @@ def test_your_own_policy_with_the_other_readout_is_a_full_only_variant(first, se
         assert earlier["readout"] == first and earlier["boards"] == ["pp", "full"], "a first measured submission is its own primitive"
 
 
+@pytest.mark.parametrize("first,second", [("coherent", "semiclassical"), ("semiclassical", "coherent")])
+def test_the_archive_reports_which_entry_a_variant_derives_from_and_its_boards(first, second, tmp_path):
+    # Fails if write_policy plans the variant and keeps the answer to itself: the published request must carry the same
+    # boards as the entry (`primitiveFrom`, boards == ["full"]), and only this return path can tell the caller.
+    checkout = plain(tmp_path)
+    ours, theirs = {}, {}
+    assert put(checkout, readout=first, variant=ours) is True
+    assert ours == {"boards": ["pp", "full"], "primitiveFrom": None}, "a first copy is its own primitive on both boards"
+    assert put(checkout, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2, readout=second, variant=theirs) is True
+    assert theirs == {"boards": ["full"], "primitiveFrom": HEAD}
+    again = {}
+    assert put(checkout, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2, readout=second, variant=again) is False
+    assert again == theirs, "an archived-already rerun reports the same variant, so a retried publication prices the same boards"
+
+
+def test_archive_policy_returns_the_variant_next_to_the_commit(remote):
+    bare, clone = remote
+    first = archive(clone, readout="semiclassical")
+    assert first["boards"] == ["pp", "full"] and first["primitiveFrom"] is None
+    second = archive(clone, verification(SOURCE2, created="2026-11-09T10:00:00Z"), head=HEAD2, source=SOURCE2, published_ids={HEAD})
+    assert second["added"] is True and second["boards"] == ["full"] and second["primitiveFrom"] == HEAD
+    assert second["commit"] == git(bare, "rev-parse", ap.BRANCH)
+
+
 @pytest.mark.parametrize("readout", ["coherent", "semiclassical"])
 def test_the_same_policy_with_the_same_readout_is_still_a_repeat(readout, tmp_path):
     # Fails if the routing only reads plan_readout_variant's return value and swallows its DuplicatePolicy.

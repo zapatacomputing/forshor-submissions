@@ -22,7 +22,14 @@ receipt's say-so:
   * the publisher RE-DERIVES the verification identity from ITS OWN checkout, so a head commit, fingerprint or key
     that the receipt merely asserts cannot pass; and
   * the publisher RE-FETCHES the artifact the stamp names -- the recorded run and attempt, under the artifact name
-    `publication.js` assigns -- and requires the receipt's body to BE that artifact. The COMPARISON authorises.
+    `publication.js` assigns -- and requires the receipt's body to BE that artifact.
+
+WHAT THAT PROVES, AND WHAT IT DOES NOT. It proves the receipt is byte for byte the artifact the named run uploaded, so a
+swapped, edited or foreign receipt is refused. It does not prove the artifact's content is true: on the fresh path the
+stamp, the identity and the artifact all come from the same trusted publish job, so the comparison fails only if that job's
+`prepare` step disagrees with itself. What the content has to satisfy is ruled on separately, by the gates in
+`intake_v2.publish_verification` (a measured receipt's Lean file must declare the semiclassical readout, the export must be
+the one the file declares, and so on); the origin proof says where the receipt came from, not that it is right.
 
 This is `archive_policy.write_policy`'s principle applied one level up. That gate compares the verification's
 `leanSha256` AND `leanSource` against the file at the pull request's head commit rather than believing either of them;
@@ -58,9 +65,11 @@ ARTIFACT = "table-generation-submission-{run_id}-{run_attempt}"
 #: The file inside that artifact which `--publish-from` is pointed at (`publish_policy.py:39`).
 MEMBER = "verification.json"
 
-#: A receipt carries the submitted Lean source (at most 1 MB), the mirror envelope and the compiled document. Eight
-#: mebibytes is far above any real receipt and well below anything that could exhaust the publisher.
-MAX_MEMBER_BYTES = 8 * 1024 * 1024
+#: A receipt carries the submitted Lean source (at most 1 MB), the mirror envelope and the compiled document. A
+#: full-run design's compiled document is large: a catalytic-design receipt measured 9.6 MB, over the earlier eight
+#: mebibytes, and was reported as an incomplete publish. Thirty-two mebibytes is above any real receipt and still
+#: bounded (the wire bound below is the same size), so a broken artifact cannot exhaust the publisher.
+MAX_MEMBER_BYTES = 32 * 1024 * 1024
 
 #: The same bound one level down, on the bytes that come off the wire, so a hostile or broken response cannot exhaust
 #: the publisher before `read_member` ever gets to bound the member it unpacks.

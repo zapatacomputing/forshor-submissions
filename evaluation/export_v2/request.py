@@ -27,11 +27,13 @@ def boards_for(mode: str) -> List[str]:
 def build_request(policy_json: Dict[str, Any], *, model: Dict[str, Any], store: EvidenceStore, head_sha: str, pull_number: int,
                   github_login: str, run_id: str, submitted_at: str, evaluated_at: str, archive_commit: str,
                   accepted_ids: List[str], evaluation_key: str, base_generation: str, number: int,
-                  forshor: Optional[Dict[str, Any]] = None, log: Callable[[str], None] = lambda s: None) -> Dict[str, Any]:
+                  forshor: Optional[Dict[str, Any]] = None, primitive_from: Optional[str] = None,
+                  log: Callable[[str], None] = lambda s: None) -> Dict[str, Any]:
     return _build_request(policy_json, model=model, store=store, head_sha=head_sha, pull_number=pull_number,
                           github_login=github_login, run_id=run_id, submitted_at=submitted_at, evaluated_at=evaluated_at,
                           archive_commit=archive_commit, accepted_ids=accepted_ids, evaluation_key=evaluation_key,
-                          base_generation=base_generation, number=number, forshor=forshor, log=log)
+                          base_generation=base_generation, number=number, forshor=forshor,
+                          primitive_from=primitive_from, log=log)
 
 
 def build_measured_request(policy_json: Dict[str, Any], *, compiled, verifier_pin, lean_source, model,

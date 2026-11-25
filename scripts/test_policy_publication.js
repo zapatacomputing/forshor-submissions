@@ -88,6 +88,20 @@ for (const reused of [false, true]) test(`a ${reused ? 'reused receipt' : 'fresh
   }
 }));
 
+test('a measured document with a compiled design passes the ordinary-export gate; a coherent one does not', () => fixture(async f => {
+  const receipt = { ...f.input.identity, runId: '123', runAttempt: 2, pullRequest: 12 };
+  const base = `results/policy-submissions/${HEAD}`;
+  const entry = { policy_id: HEAD, path: base, source: { repository: 'zapatacomputing/forshor-submissions', run_id: '123', pr_number: 12 } };
+  const accepted = printed => { f.verification.printed = printed;
+    const readJson = async (g, c, name) => name.startsWith('leaderboard/') ? { schema: 'forshor.policy-archive/v1', policies: [entry] }
+      : { ...f.verification, ciVerification: receipt };
+    return policy.accepted({ ...f.input, readJson }); };
+  const design = { schema: 'forshor.full-run-selection/v1' };
+  await assert.doesNotReject(accepted({ schema: 'forshor.policy-submission-semiclassical/v1', submitted_readout: 'semiclassical', submitted_full_run: design }));
+  await assert.rejects(accepted({ schema: 'forshor.policy-submission/v1', submitted_full_run: design }), /submitted_full_run/);
+  await assert.rejects(accepted({ schema: 'forshor.policy-submission-semiclassical/v1', submitted_readout: 'coherent', submitted_full_run: design }), /submitted_full_run/);
+}));
+
 for (const field of ['login', 'leanSource', 'leanSha256', 'digest']) {
   test(`a forged policy ${field} cannot reach publication`, () => fixture(async f => {
     f.verification[field] = 'forged'; f.write();

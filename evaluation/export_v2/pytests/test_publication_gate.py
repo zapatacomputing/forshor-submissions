@@ -127,6 +127,35 @@ def _payload():
             "priced": [{"board": "pp", "delta": "1e-2", "row": row, "panel": {}}]}
 
 
+# ---------------------------------------------------------------- a measured receipt's file declares the readout
+
+def test_a_measured_receipt_whose_file_does_not_declare_the_semiclassical_readout_is_refused(measured, publisher, monkeypatch, tmp_path):
+    """The coherent branch refuses a file that declares the semiclassical readout (`refuse_unqualified_design`); the
+    measured branch asked nothing of the file's readout, so a measured export beside a file that declares none was
+    priced and archived. Red if `require_semiclassical_declared` stops being called on the measured branch."""
+    v = qualify(measured, publisher, monkeypatch, tmp_path)
+    declared = [n for n, line in enumerate(v["leanSource"].splitlines()) if line.startswith("def submittedDesign ")]
+    assert declared, "the recorded source declares the readout"
+    kept, dropping = [], False
+    for line in v["leanSource"].splitlines():
+        dropping = line.startswith("def submittedDesign ") or (dropping and line[:1] in (" ", "\t") and line.strip() != "")
+        if not dropping:
+            kept.append(line)
+    edited = json.loads(json.dumps(v))
+    edited["leanSource"] = "\n".join(kept) + "\n"
+    edited["leanSha256"] = sha256(edited["leanSource"].encode()).hexdigest()
+    # keep the receipt self-consistent, so the source-to-evidence binding (which already refuses an edited file) is not what answers
+    edited["localReadoutQualification"]["evidence"]["sourceSha256"] = edited["leanSha256"]
+    with pytest.raises(intake_v2.Refused, match="does not declare the semiclassical readout"):
+        publish(edited, tmp_path, qualified_in_run=True)
+    assert publisher.sent == []
+
+
+def test_a_measured_receipt_whose_file_declares_the_readout_is_not_refused_for_it(measured):
+    _, _, source = measured
+    intake_v2.require_semiclassical_declared(source)
+
+
 # ---------------------------------------------------------------- the retained refusals
 
 def test_a_participant_supplied_qualification_is_still_refused(measured, publisher, monkeypatch, tmp_path):

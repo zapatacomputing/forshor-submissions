@@ -13,9 +13,15 @@ const digest = text => createHash('sha256').update(text).digest('hex');
 
 const strictUtf8 = new TextDecoder('utf-8', { fatal: true });
 
+const MEASURED_SCHEMA = 'forshor.policy-submission-semiclassical/v1';
+
+// A compiled per-family QFT design rides only on the semiclassical (measured) document; intake's check_full_run_binding
+// is the real gate for what it may contain. Anywhere else the key means a coherent export carrying a design.
 function requireOrdinaryExport(verification) {
-  if (Object.hasOwn(verification.printed ?? {}, 'submitted_full_run'))
-    throw new Error('Compiled submitted_full_run is accepted only together with the semiclassical readout declaration');
+  const printed = verification.printed ?? {};
+  if (Object.hasOwn(printed, 'submitted_full_run')
+      && !(printed.schema === MEASURED_SCHEMA && printed.submitted_readout === 'semiclassical'))
+    throw new Error('Compiled submitted_full_run is accepted only on the semiclassical readout document');
 }
 
 async function content(github, context, path, ref, { strict = false } = {}) {

@@ -597,6 +597,75 @@ def test_a_lean_verification_carries_the_source_and_the_archive_is_written_befor
     assert any(isinstance(u, str) and u.endswith("/v2/publish") for u, _ in calls)
 
 
+def publish_with_archive(monkeypatch, tmp_path, model, policy_doc, archived):
+    """One ordinary coherent publication whose archive step answers `archived`; returns the request the publisher got."""
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    v = intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w", run_mirror_fn=archived_mirror([]), log=lambda s: None)
+    intake_v2.publish_verification(v, login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w2", head_sha="a" * 40, run_id="1",
+                                   archive_commit="a" * 40, archive_write=lambda verification, **kind: archived, log=lambda s: None)
+    return [p for u, p in calls if u.endswith("/v2/publish")][0]
+
+
+def test_a_variant_the_archive_recorded_is_priced_on_the_full_board_alone(monkeypatch, tmp_path, model, policy_doc):
+    """The archive entry for your own second copy of a policy claims only the full board and names the earlier entry
+    (`boards: ["full"]`). The request must say the same: before, `publish_verification` dropped the archive's answer and
+    priced pp + full with no `primitiveFrom`, so the published rows disagreed with the record kept forever."""
+    request = publish_with_archive(monkeypatch, tmp_path, model, policy_doc,
+                                   {"path": "p", "commit": "c" * 40, "added": True, "boards": ["full"], "primitiveFrom": "f" * 40})
+    assert request["submission"]["boards"] == ["full"] and request["submission"]["primitiveFrom"] == "f" * 40
+    assert {p["board"] for p in request["priced"]} == {"full"}
+    assert "f" * 40 in request["archive"]["acceptedIds"]
+
+
+def test_an_ordinary_submission_carries_no_variant_and_both_boards(monkeypatch, tmp_path, model, policy_doc):
+    request = publish_with_archive(monkeypatch, tmp_path, model, policy_doc,
+                                   {"path": "p", "commit": "c" * 40, "added": True, "boards": ["pp", "full"], "primitiveFrom": None})
+    assert request["submission"]["boards"] == ["pp", "full"] and "primitiveFrom" not in request["submission"]
+    assert {p["board"] for p in request["priced"]} == {"pp", "full"}
+
+
+def test_an_archive_entry_and_a_request_that_disagree_about_boards_publish_nothing(monkeypatch, tmp_path, model, policy_doc):
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))
+    v = intake_v2.verify_submission(policy_doc, login="tester", tree=tmp_path, workdir=tmp_path / "w", run_mirror_fn=archived_mirror([]), log=lambda s: None)
+    with pytest.raises(intake_v2.Incomplete, match="boards"):
+        intake_v2.publish_verification(v, login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w2", head_sha="a" * 40, run_id="1", archive_commit="a" * 40,
+                                       archive_write=lambda verification, **kind: {"path": "p", "commit": "c" * 40, "added": True, "boards": ["full"], "primitiveFrom": None},
+                                       log=lambda s: None)
+    assert not any(isinstance(u, str) and u.endswith("/v2/publish") for u, _ in calls)
+
+
+def test_your_own_other_readout_copy_is_published_as_the_variant_the_archive_wrote(monkeypatch, tmp_path, model, policy_doc):
+    """End to end through the real archive planner: an earlier published MEASURED copy of this policy by the same login,
+    then this ordinary coherent copy. The archive writes a full-only entry, and the request now matches it."""
+    import archive_policy
+    lean_world(monkeypatch, policy_doc)
+    v = intake_v2.verify_submission(None, lean_policy=LEAN, login="tester", tree=tmp_path, workdir=tmp_path / "w", forshor_tree=tmp_path / "f",
+                                    run_mirror_fn=archived_mirror([]), log=lambda s: None)
+    checkout = tmp_path / "archive"
+    (checkout / archive_policy.INDEX_PATH).parent.mkdir(parents=True)
+    earlier = dict(v, leanSource=LEAN + "-- earlier\n")
+    earlier["leanSha256"] = archive_policy.sha256(earlier["leanSource"])
+    archive_policy.write_policy(checkout, earlier, login="tester", pull=3, head_sha="f" * 40, run_id="0", source=earlier["leanSource"], readout="semiclassical")
+    calls = []
+    monkeypatch.setattr(intake_v2, "request_json", fake_publisher(model, calls))     # its published ids hold "f" * 40
+
+    def write(verification, **kind):
+        variant = {}
+        archive_policy.write_policy(checkout, verification, login="tester", pull=7, head_sha="a" * 40, run_id="1", source=verification["leanSource"],
+                                    published_ids={"f" * 40}, variant=variant, **kind)
+        return {"path": "p", "commit": "c" * 40, "added": True, **variant}
+
+    result = intake_v2.publish_verification(v, login="tester", pull=7, url="http://x", token="t", workdir=tmp_path / "w2", head_sha="a" * 40, run_id="1",
+                                            archive_commit="a" * 40, archive_write=write, log=lambda s: None)
+    entry = next(p for p in archive_policy.read_index(checkout)["policies"] if p["policy_id"] == "a" * 40)
+    assert entry["boards"] == ["full"]
+    assert result["boards"] == entry["boards"], "the published rows occupy exactly the boards the archive claims"
+    sent = [p for u, p in calls if u.endswith("/v2/publish")][0]
+    assert sent["submission"]["primitiveFrom"] == "f" * 40
+
+
 def test_a_refused_archive_stops_the_publication(monkeypatch, tmp_path, model, policy_doc):
     import archive_policy
     calls = []
