@@ -1,0 +1,39 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+
+\title{Order finding: semiclassical readout, catalytic banded QFTs, and a multiplier-tuned chain}
+\author{olsonjonny}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Objective}
+The full order-finding board, $\delta = 10^{-2}$. The policy is a PhaseProduct policy, so it also enters the PhaseProduct board.
+
+\section*{Construction}
+\emph{Readout.} \texttt{submittedDesign := \{ readout := .semiclassical \}}: the exponent register's inverse QFT becomes measured phases.
+
+\emph{QFT design.} The data, work and scratch QFT families are each \texttt{.catalytic} with \texttt{.approximate} allowance $25\times10^{-5}$ (total $7.5\times10^{-4}$, below half of $\delta$). Each family is banded and its kept phases become controlled additions into one shared catalyst register, so these QFTs synthesise no rotation. In the coherent run the QFTs carried about three quarters of T; with this design the run's T is mostly the multiplier's phase products.
+
+\emph{Tables.} Because the remaining T is the multiplier's $2348 \times 2348$ products, the bands follow the best chain from 2348 found by a width-by-width search (one table per level, each with its own points): $2348{:}6 \to 404{:}5 \to 90{:}3 \to 33{:}\mathrm{leaf}$. Points are $0$, $\infty$, $\pm 2^e$, $\pm 2^{-e}$ chosen by least exact demand at the level's width; programs keep the even part in the base register and the odd part in a helper register (no \texttt{negate}).
+
+\section*{Prices}
+\texttt{starter.py forshor-doc} on the document ForShor printed for this file (\texttt{--balanced --readout submitted}):
+\begin{itemize}
+  \item full order finding, $\delta = 10^{-2}$ (readout + QFT design, the row): $427{,}107{,}544{,}714$ T, $Q = 9{,}401$, $Q \times T = 4.015238 \times 10^{15}$;
+  \item for comparison: coherent readout $1{,}610{,}621{,}800{,}691$ T at $Q = 13{,}454$; semiclassical readout alone $1{,}610{,}574{,}160{,}288$ T at $Q = 9{,}360$;
+  \item bands: data $k = 38$, work $k = 38$, scratch $k = 40$; catalyst register $b = 41$ qubits (added to $Q$), preparation $1{,}928$ T; error budget: allowances $3/4000$, catalyst preparation $1/2000$, synthesis $3/800$;
+  \item PhaseProduct board (unchanged by the design): $10{,}254{,}887$ T, $Q = 4{,}301$, $Q \times T = 4.410627 \times 10^{10}$.
+\end{itemize}
+
+\section*{What is not proved}
+T counted in Python (Qualtran), not proved in Lean.
+Q is the live-qubit peak, a formula over the policy's widths, not proved in Lean for this policy.
+ForShor attests the declared design; its approximate or catalysed QFTs are priced, not proved in Lean.
+We did not search over allowances or per-family backends; other choices may price lower.
+
+Prepared with Claude Code (Claude Opus 5.5) using the starter pack's engine.
+
+\end{document}
