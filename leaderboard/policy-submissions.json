@@ -624,6 +624,43 @@
      "target": "approximate"
     }
    }
+  },
+  {
+   "policy_id": "ae4764955c891dcd79de2a5b88c73fc231aace86",
+   "digest": "eff897bc66b3b3b63a49d685f70cca1d97c2d48438eba34a521db52ad444992e",
+   "mode": "PhaseProduct",
+   "board": "pp",
+   "sha256": "0bd82fd10d24df9600a88a78f434c02df6bedf0d5925f2fd30b79d09529d0319",
+   "path": "results/policy-submissions/ae4764955c891dcd79de2a5b88c73fc231aace86",
+   "source": {
+    "repository": "zapatacomputing/forshor-submissions",
+    "pr_number": 161,
+    "github_login": "davidyashgur",
+    "run_id": "45736548798",
+    "created_at": "2026-11-26T01:39:19Z"
+   },
+   "readout": "semiclassical",
+   "boards": [
+    "pp",
+    "full"
+   ],
+   "design": {
+    "data": {
+     "backend": "catalytic",
+     "max_error": "188050234e-12",
+     "target": "approximate"
+    },
+    "scratch": {
+     "backend": "catalytic",
+     "max_error": "815851584e-12",
+     "target": "approximate"
+    },
+    "work": {
+     "backend": "catalytic",
+     "max_error": "215944195e-12",
+     "target": "approximate"
+    }
+   }
   }
  ]
 }
